@@ -55,7 +55,7 @@ test('Workbox includes every gameplay file and the current revision of each corr
   };
   for (const dir of ['mugroup', 'openmu', 'models', 'ADMIN']) {
     for (const file of readdirSync(`dist/${dir}`, { recursive: true, withFileTypes: true })) {
-      if (!file.isFile() || !/\.(glb|json|png|f32|u8|wav|mp3|ogg)$/.test(file.name)) continue;
+      if (!file.isFile() || !/\.(glb|json|png|webp|f32|u8|wav|mp3|ogg)$/.test(file.name)) continue;
       const path = `${file.parentPath}/${file.name}`.slice('dist/'.length);
       assert(hasEntry(path), `Not cached: ${path}`);
     }

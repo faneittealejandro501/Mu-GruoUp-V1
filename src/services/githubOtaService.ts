@@ -1,3 +1,4 @@
+import { offlineInstallReady } from './offlineInstall';
 import manifest from '../../public/ota-manifest.json' with { type: 'json' };
 
 const DEFAULT_REPO_SLUG = manifest.repo;
@@ -48,7 +49,7 @@ export function setLinkedGithubRepoSlug(raw: string): string {
 
 export function getConfiguredCloudApiUrl(): string {
   try {
-    return (localStorage.getItem(LS_CLOUD_URL_KEY) || '').trim().replace(/\/+$/g, '');
+    return (localStorage.getItem(LS_CLOUD_URL_KEY) || import.meta.env.VITE_BACKUP_URL || '').trim().replace(/\/+$/g, '');
   } catch {
     return '';
   }
@@ -83,8 +84,7 @@ export async function checkForGithubOtaUpdate(): Promise<GithubOtaStatus> {
   const [owner, repo] = repoSlug.split('/');
   const pagesUrl = `https://${owner.toLowerCase()}.github.io/${repo}/`;
 
-  const localManifest = await fetchJsonTimeout<{ version?: string }>('./ota-manifest.json', 2500);
-  const localVersion = localManifest?.version || LOCAL_VERSION;
+  const localVersion = LOCAL_VERSION;
 
   const status: GithubOtaStatus = {
     repoSlug,
@@ -98,7 +98,7 @@ export async function checkForGithubOtaUpdate(): Promise<GithubOtaStatus> {
   }
 
   const [pagesManifest, commitInfo] = await Promise.all([
-    fetchJsonTimeout<{ version?: string }>(`${pagesUrl}ota-manifest.json`, 3500),
+    fetchJsonTimeout<{ version?: string }>(`${pagesUrl}ota-manifest.json?buscar-version=1`, 3500),
     fetchJsonTimeout<{ sha?: string; commit?: { message?: string } }>(
       `https://api.github.com/repos/${repoSlug}/commits/main`,
       3500,
@@ -135,13 +135,70 @@ export async function applyWebOtaUpdate(): Promise<boolean> {
   }
 }
 
-export function watchWebUpdates(): () => void {
-  const check = () => void applyWebOtaUpdate();
-  window.addEventListener('online', check);
-  check();
-  const timer = window.setInterval(check, 20 * 60 * 1000);
+export function watchWebUpdates(saveLocalProgress: () => Promise<boolean>): () => void {
+  if (!('serviceWorker' in navigator)) return () => {};
+  const workers = navigator.serviceWorker;
+  let stopped = false;
+  let checking = false;
+  let pendingCheck = false;
+  let reloading = false;
+  let previousController = workers.controller;
+  let replacement = false;
+
+  const inspectActiveWorker = async () => {
+    // Read through the controller, so an online server response cannot cause
+    // a reload before this release has finished downloading offline.
+    if (!workers.controller || reloading || stopped || document.hidden) return;
+    if (checking) { pendingCheck = true; return; }
+    checking = true;
+    try {
+      const active = await fetchJsonTimeout<{ version?: string }>('./ota-manifest.json');
+      if (!active?.version || (!replacement && active.version === LOCAL_VERSION)) return;
+      if (!await offlineInstallReady(active.version)) return;
+      if (!stopped && await saveLocalProgress() && !stopped) {
+        reloading = true;
+        window.location.reload();
+      }
+    } catch {
+      // Keep playing; a failed save or incomplete download is retried.
+    } finally {
+      checking = false;
+      if (pendingCheck) { pendingCheck = false; void inspectActiveWorker(); }
+    }
+  };
+  let probing = false;
+  const check = async () => {
+    if (stopped || probing || document.hidden) return;
+    probing = true;
+    try {
+      if (navigator.onLine) await applyWebOtaUpdate();
+      await inspectActiveWorker();
+    } finally { probing = false; }
+  };
+  const onCheck = () => { void check(); };
+  const onControllerChange = () => {
+    const controller = workers.controller;
+    replacement ||= Boolean(previousController && controller && previousController !== controller);
+    previousController = controller;
+    if (controller?.state === 'activating') {
+      controller.addEventListener('statechange', () => { void inspectActiveWorker(); }, { once: true });
+    } else void inspectActiveWorker();
+  };
+  workers.addEventListener('controllerchange', onControllerChange);
+  window.addEventListener('online', onCheck);
+  window.addEventListener('pageshow', onCheck);
+  window.addEventListener('focus', onCheck);
+  document.addEventListener('visibilitychange', onCheck);
+  void workers.ready.then(onCheck);
+  onCheck();
+  const timer = window.setInterval(onCheck, 60_000);
   return () => {
-    window.removeEventListener('online', check);
+    stopped = true;
+    workers.removeEventListener('controllerchange', onControllerChange);
+    window.removeEventListener('online', onCheck);
+    window.removeEventListener('pageshow', onCheck);
+    window.removeEventListener('focus', onCheck);
+    document.removeEventListener('visibilitychange', onCheck);
     window.clearInterval(timer);
   };
 }

@@ -26,7 +26,7 @@ export default defineConfig({
       includeAssets: ['apple-touch-icon.png', 'icon.svg', 'ota-manifest.json'],
       workbox: {
         maximumFileSizeToCacheInBytes: 25 * 1024 * 1024,
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,json,wav,ogg,glb,f32,u8,wasm}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,webp,svg,json,wav,ogg,glb,f32,u8,wasm}'],
         manifestTransforms: [async entries => {
           const urls = [...new Map(entries.filter(e => e.url !== 'offline-files.json').map(e => [e.url, e])).values()];
           const index = JSON.stringify(urls.map(({ url, revision }) => [url, revision]));

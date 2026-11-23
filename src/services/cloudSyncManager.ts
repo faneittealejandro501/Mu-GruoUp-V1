@@ -31,6 +31,7 @@ class CloudSyncManager {
   };
 
   private onOnline = () => {
+    this.apiProbeState = 'unknown';
     this.updateStatus({ isOnline: true, isOfflineMode: false });
     void this.syncNow();
   };
@@ -206,6 +207,29 @@ class CloudSyncManager {
       await setKvSetting('privateBackup:' + copy.account.id, { endpoint: endpoint.href, code });
     });
     if (applied) for (const listener of this.dataAppliedListeners) listener();
+  }
+
+  // Enrollment also works offline; bind the code to the chosen server before
+  // any upload so changing the server never silently transfers a backup.
+  public async preparePrivateBackup(): Promise<string> {
+    const id = this.activeAccountId;
+    if (!id) throw new Error('Inicia sesión para activar la copia.');
+    const base = getConfiguredCloudApiUrl();
+    if (!base && location.hostname.endsWith('.github.io')) throw new Error('Configura el servidor privado para activar la copia.');
+    const endpoint = new URL((base || location.origin) + '/api/private-backup');
+    if (endpoint.protocol !== 'https:' && !['localhost','127.0.0.1','[::1]'].includes(endpoint.hostname)) {
+      throw new Error('El servidor de respaldo debe usar HTTPS.');
+    }
+    const key = 'privateBackup:' + id;
+    const code = await db.transaction('rw', db.kvMeta, async () => {
+      const previous = await getKvSetting<{ endpoint: string; code: string } | null>(key,null);
+      if (previous?.endpoint === endpoint.href) return previous.code;
+      const code = generateRecoveryCode();
+      await setKvSetting(key, {endpoint:endpoint.href,code});
+      return code;
+    });
+    if (navigator.onLine) void this.syncNow();
+    return code;
   }
 
   public async createPrivateBackup(): Promise<string> {
