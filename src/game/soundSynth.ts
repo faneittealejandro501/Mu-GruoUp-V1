@@ -9,11 +9,50 @@ class MuSoundSynth {
   private foreground = typeof document === 'undefined' || !document.hidden;
   private playingSfx = new Set<HTMLAudioElement>();
 
+  private shorelineGain: GainNode | null = null;
+  private shorelineBuffer: AudioBuffer | null = null;
+  private shorelineSource: AudioBufferSourceNode | null = null;
+
+  public setShoreline(level: number): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    if (!this.foreground || this.muted || this.volume <= 0 || level <= 0) {
+      this.shorelineSource?.stop();
+      this.shorelineSource?.disconnect();
+      this.shorelineSource = null;
+      return;
+    }
+    if (!this.shorelineSource) {
+      if (!this.shorelineBuffer) {
+        const length = ctx.sampleRate * 4;
+        const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+        const samples = buffer.getChannelData(0);
+        let ripple = 0;
+        for (let i = 0; i < length; i++) {
+          ripple = .91 * ripple + (Math.random() * 2 - 1) * .09;
+          samples[i] = ripple * (.65 + .35 * Math.sin(4 * Math.PI * i / length)) *
+            Math.min(1, i / 160, (length - 1 - i) / 160);
+        }
+        this.shorelineBuffer = buffer;
+        this.shorelineGain = ctx.createGain();
+        this.shorelineGain.gain.value = 0;
+        this.shorelineGain.connect(ctx.destination);
+      }
+      this.shorelineSource = ctx.createBufferSource();
+      this.shorelineSource.buffer = this.shorelineBuffer;
+      this.shorelineSource.loop = true;
+      this.shorelineSource.connect(this.shorelineGain!);
+      this.shorelineSource.start();
+    }
+    this.shorelineGain!.gain.setTargetAtTime(.11 * this.volume * level, ctx.currentTime, .24);
+  }
+
   public setForeground(active: boolean) {
     this.foreground = active;
     if (!active) {
       for (const audio of this.playingSfx) audio.pause();
       this.playingSfx.clear();
+      this.setShoreline(0);
       void this.ctx?.suspend().catch(() => {});
     }
     this.syncMusicElement();
@@ -275,7 +314,7 @@ class MuSoundSynth {
     const cleanName = base.replace(/\d+$/, '');
     const throttleKey = `${cleanName}_${event}`;
     const now = performance.now();
-    const last = this.monsterSfxThrottle.get(throttleKey) || 0;
+    const last = this.monsterSfxThrottle.get(throttleKey) ?? -Infinity;
     if (now - last < 750) return;
     this.monsterSfxThrottle.set(throttleKey, now);
     const heavy = ['bang', 'grrr', 'rockmuscle', 'clockwork', 'jackhammer'].includes(cleanName);
@@ -283,6 +322,10 @@ class MuSoundSynth {
     const clip = event === 'die1' ? (heavy ? 'openmu/audio/mBullDie' : flying ? 'openmu/audio/mDrakanDie' : 'openmu/audio/mHoundDie')
       : event === 'dmg1' ? 'mugroup/audio/hit_sword' : heavy ? 'mugroup/audio/stomp' : flying ? 'mugroup/audio/wind' : 'mugroup/audio/swing';
     this.playUrl(`./${clip}.wav`, 0.65);
+  }
+
+  public playWingFlap(): void {
+    void this.playSoundKey('wing_flap', 0.34);
   }
 
   public playSkill(soundKey?: string) {

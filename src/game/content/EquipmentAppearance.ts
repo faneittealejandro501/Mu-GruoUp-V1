@@ -1,3 +1,4 @@
+import { WingRig } from './WingRig';
 import { artisanArmor, artisanWeapon, AURORA_WING_NAME } from '../../data/artisanEquipment';
 import { buildArtisanWeapon } from './ArtisanWeapon';
 import {
@@ -61,6 +62,7 @@ export interface FlyffActorLike {
   gear: Record<string, GearSlotState>;
   wingAnimations: AnimationGroup[];
   wingSocket: TransformNode | null;
+  wingRig: WingRig | null;
   wingLight: PointLight | null;
   wingParticles: ParticleSystem | null;
   enhanceParticles: ParticleSystem[];
@@ -388,7 +390,8 @@ export class EquipmentAppearance {
     const rightSocket = findNode('socket_rightHand') || findNode('Bip02 R Hand') || outfitRoot;
     const shieldSocket = findNode('socket_shield') || findNode('socket_leftHand') || findNode('Bip02 L ForeArm') || outfitRoot;
     const leftSocket = findNode('socket_leftHand') || shieldSocket;
-    const spineNode = findNode('Bip02 Spine2') || findNode('Bip02 Spine1') || findNode('Bip02 Spine') || outfitRoot;
+    const torso = findNode('Bip02 Spine1') || findNode('Bip02 Spine');
+    const upperSpine = findNode('Bip02 Spine2') || torso;
 
     // Disable native equipment slots first (keep head/hair)
     for (const m of actor.outfit.meshes) {
@@ -627,7 +630,7 @@ export class EquipmentAppearance {
     }
 
     // Attach wings calibrated flush to upper back with skeleton animations, Evo 1-4 scale, PointLight & aura
-    if (wingContainer && wingFile && spineNode) {
+    if (wingContainer && wingFile && upperSpine instanceof TransformNode && torso instanceof TransformNode) {
       const container: AssetContainer = wingContainer;
       container.addAllToScene();
       const tag = `wings:${wingFile}`;
@@ -642,70 +645,56 @@ export class EquipmentAppearance {
         }
       }
 
-      // Calibrate spine bone rotation back into actor upright rest pose
-      actor.root.computeWorldMatrix(true);
-      let invSpineToActorRot = Quaternion.Identity();
-      let localBackOffset = new Vector3(0, 0, -0.11);
-      if (spineNode instanceof TransformNode || spineNode instanceof AbstractMesh) {
-        spineNode.computeWorldMatrix(true);
-        const spineWorld = spineNode.getWorldMatrix();
-        const actorWorld = actor.root.getWorldMatrix();
-        const relMat = actorWorld.multiply(Matrix.Invert(spineWorld));
-        localBackOffset = Vector3.TransformNormal(localBackOffset, relMat);
-        const rot = new Quaternion();
-        relMat.decompose(undefined, rot, undefined);
-        invSpineToActorRot = rot;
-      }
-
-      const wingSocket = new TransformNode(`wing_socket_${Date.now()}`, this.scene);
-      wingSocket.parent = spineNode;
-      // Anchor flush behind upper shoulder blades in upright actor coordinates
-      wingSocket.position.copyFrom(localBackOffset);
-      wingSocket.rotationQuaternion = invSpineToActorRot;
+      const wingSocket = new TransformNode('wing_spine_mount', this.scene);
+      wingSocket.parent = actor.root;
+      wingSocket.rotationQuaternion = Quaternion.Identity();
       actor.wingSocket = wingSocket;
+      actor.wingRig = new WingRig(actor.root, wingSocket, upperSpine, torso);
 
       const isMuWing = wingFile.includes('wing_mu');
       const baseName = wingFile.split('/').pop() || wingFile;
       // Calibrated local alignment & measured deformed span per wing family so Evo 1 = ~1.50m wingspan
       let alignRot = new Vector3(0, 0, 0);
-      let modelOffset = new Vector3(0, 0.12, -0.06);
+      let modelOffset = new Vector3(0, -0.87, -0.14);
       let rawAnimatedSpan = 1.5;
+      let verticalFit = 1;
 
       if (baseName.startsWith('wing_mugroup_feather')) {
         alignRot = new Vector3(0, 0, 0);
-        modelOffset = new Vector3(0, 0.12, -0.06);
+        modelOffset = new Vector3(0, -0.87, -0.14);
         rawAnimatedSpan = 1.27;
       } else if (baseName.startsWith('wing_mugroup_angel')) {
         alignRot = new Vector3(0, 0, 0);
-        modelOffset = new Vector3(0, 0.08, -0.04);
+        modelOffset = new Vector3(0, -1.02, -0.22);
         rawAnimatedSpan = 3.57;
       } else if (baseName.startsWith('wing_mugroup_prophet')) {
         alignRot = new Vector3(0, 0, 0);
-        modelOffset = new Vector3(0, -2.55, -0.72);
+        modelOffset = new Vector3(0, -1.55, -0.39);
         rawAnimatedSpan = 4.27;
+        verticalFit = 0.43;
       } else if (baseName === 'wing_mu_fairy.glb') {
         alignRot = new Vector3(-Math.PI / 2, 0, 0);
         modelOffset = new Vector3(0, 0.18, -0.10);
         rawAnimatedSpan = 2.07;
       } else if (baseName === 'wing_mu_angel.glb') {
         alignRot = new Vector3(0, 0, 0);
-        modelOffset = new Vector3(0, -0.85, -0.18);
+        modelOffset = new Vector3(0, -0.20, -0.18);
         rawAnimatedSpan = 3.30;
       } else if (baseName === 'wing_mu_elf.glb') {
         alignRot = new Vector3(-0.35, 0, 0);
-        modelOffset = new Vector3(0, 0.15, -0.05);
+        modelOffset = new Vector3(0, -0.12, 0.02);
         rawAnimatedSpan = 4.62;
       } else if (isMuWing) {
         // OpenMU dragon / soul / dark / storm / eternal / emperor / curse wings extend along -X in glTF
         alignRot = new Vector3(0, Math.PI / 2, 0);
         modelOffset = new Vector3(0, 0.08, -0.06);
         if (baseName === 'wing_mu_dragon.glb') rawAnimatedSpan = 3.61;
-        else if (baseName === 'wing_mu_soul.glb') rawAnimatedSpan = 2.55;
-        else if (baseName === 'wing_mu_dark.glb') rawAnimatedSpan = 2.24;
-        else if (baseName === 'wing_mu_storm.glb') rawAnimatedSpan = 1.50;
-        else if (baseName === 'wing_mu_eternal.glb') rawAnimatedSpan = 4.00;
-        else if (baseName === 'wing_mu_emperor.glb') rawAnimatedSpan = 2.41;
-        else if (baseName === 'wing_mu_curse.glb') rawAnimatedSpan = 3.07;
+        else if (baseName === 'wing_mu_soul.glb') { rawAnimatedSpan = 2.55; modelOffset.y = -0.12; }
+        else if (baseName === 'wing_mu_dark.glb') { rawAnimatedSpan = 2.24; modelOffset.y = -0.06; verticalFit = 0.29; }
+        else if (baseName === 'wing_mu_storm.glb') { rawAnimatedSpan = 1.50; modelOffset.set(0, 0.01, -0.10); verticalFit = 0.19; }
+        else if (baseName === 'wing_mu_eternal.glb') { rawAnimatedSpan = 4.00; modelOffset.y = -0.02; }
+        else if (baseName === 'wing_mu_emperor.glb') { rawAnimatedSpan = 2.41; modelOffset.y = 0.01; }
+        else if (baseName === 'wing_mu_curse.glb') { rawAnimatedSpan = 3.07; modelOffset.y = 0; verticalFit = 0.23; }
         else rawAnimatedSpan = 2.60;
       }
 
@@ -715,36 +704,22 @@ export class EquipmentAppearance {
       const wingBackAnchor = new TransformNode(`wing_back_anchor_${Date.now()}`, this.scene);
       wingBackAnchor.parent = wingSocket;
       wingBackAnchor.position.set(0, 0, 0);
-      wingBackAnchor.scaling.set(finalScale, finalScale, finalScale);
+      // Keep the documented Evo wingspan in X/Z. Tall or downward-facing
+      // models need a vertical fit to keep their tips clear of the boots.
+      wingBackAnchor.scaling.set(finalScale, normalizedBase * Math.min(evoFactor * verticalFit, 2.4), finalScale);
 
       const wingAlign = new TransformNode(`wing_align_${Date.now()}`, this.scene);
       wingAlign.parent = wingBackAnchor;
       wingAlign.position.copyFrom(modelOffset);
       wingAlign.rotation.copyFrom(alignRot);
 
-      const rootNode =
-        container.meshes.find((m) => m.name === '__root__') ||
-        container.transformNodes[0] ||
-        null;
-      if (rootNode) {
-        rootNode.parent = wingAlign;
-        if ('position' in rootNode && rootNode.position instanceof Vector3) {
-          rootNode.position.set(0, 0, 0);
-        }
-        if ('rotationQuaternion' in rootNode) {
-          (rootNode as TransformNode).rotationQuaternion = Quaternion.Identity();
-        }
-        if ('scaling' in rootNode && rootNode.scaling instanceof Vector3) {
-          rootNode.scaling.set(1, 1, 1);
-        }
+      for (const node of container.rootNodes) {
+        if (node instanceof TransformNode) node.parent = wingAlign;
       }
 
       for (const m of container.meshes) {
         if (m.name === '__root__') continue;
-        if (!rootNode) {
-          m.parent = wingAlign;
-          m.scaling.set(1, 1, 1);
-        }
+        if (!m.skeleton && m instanceof Mesh) actor.wingRig.addUnskinned(m);
         m.name = `equip_wings_${tag}`;
         m.isPickable = false;
         if (isMuWing && m.material && 'transparencyMode' in m.material) {
@@ -768,10 +743,16 @@ export class EquipmentAppearance {
       actor.gear.wings.file = tag;
       actor.gear.wings.itemName = wingItem?.name;
       actor.gear.wings.containers.push(container);
+      actor.wingRig.update(0, false);
       actor.playWingAnimation('stand');
 
       this.attachWingEffects(actor, wingSocket, evoTier);
+    } else {
+      wingContainer?.dispose();
     }
+
+    const armorTier = Math.max(...ARMOR_SLOTS.map(slot => actor.gear[slot]?.equipped ? slotItems.get(slot)?.enhanceLevel ?? 0 : 0));
+    if (upperSpine instanceof TransformNode && armorTier >= 6) this.attachItemSparkles(actor, upperSpine, armorTier);
 
     // Synchronize underlying body meshes
     for (const [slot, bodyPrefixes] of Object.entries(BODY_MESH_MAP)) {
@@ -896,6 +877,7 @@ export class EquipmentAppearance {
       // ignore
     }
     actor.wingSocket = null;
+    actor.wingRig = null;
 
     const keptMeshes: AbstractMesh[] = [];
     for (const m of actor.outfit.meshes) {

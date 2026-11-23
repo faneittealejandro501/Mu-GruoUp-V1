@@ -1,9 +1,9 @@
 {
   "appName": "MuGro-up'",
-  "version": "2.3.0",
-  "repo": "ZoeyJF555/Mu-Offline-Mobile-nuevo-",
-  "pagesUrl": "https://zoeyjf555.github.io/Mu-Offline-Mobile-nuevo-/",
-  "apkwebUrl": "https://zoeyjf555.github.io/Mu-Offline-Mobile-nuevo-/",
-  "buildTimestamp": "2026-11-22T00:00:00.000Z",
+  "version": "2.4.0",
+  "repo": "angelicamarin313555/Mobile",
+  "pagesUrl": "https://angelicamarin313555.github.io/Mobile/",
+  "apkwebUrl": "https://angelicamarin313555.github.io/Mobile/",
+  "buildTimestamp": "2026-11-23T00:00:00.000Z",
   "offlineEngine": "Dexie.js (IndexedDB Offline-First) + Service Worker + Babylon.js GLB"
 }

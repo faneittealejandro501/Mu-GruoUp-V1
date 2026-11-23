@@ -5,7 +5,7 @@
   "detailStreamRadiusMeters": 100,
   "wingRunSpeedMultiplier": 1.0,
   "baseRunSpeed": 14.0,
-  "stripManmadeStructures": true,
+  "stripManmadeStructures": false,
   "safeZoneCombatBlocked": true,
   "safeZoneMonsterExclusion": true,
   "maps": {
@@ -19,7 +19,7 @@
       "weather": "leaves",
       "ambientBed": "wind",
       "musicTheme": "flaris",
-      "targetMonsterCount": 1600,
+      "targetMonsterCount": 40000,
       "spawn": { "x": 1336, "z": 1281 }
     },
     "robledal": {
@@ -32,7 +32,7 @@
       "weather": "petals",
       "ambientBed": "wind",
       "musicTheme": "robledal",
-      "targetMonsterCount": 1600,
+      "targetMonsterCount": 40000,
       "spawn": { "x": 520, "z": 2440 }
     },
     "puerto": {
@@ -45,7 +45,7 @@
       "weather": "leaves",
       "ambientBed": "water",
       "musicTheme": "puerto",
-      "targetMonsterCount": 1600,
+      "targetMonsterCount": 40000,
       "spawn": { "x": 2300, "z": 2390 }
     },
     "ceniza": {
@@ -58,7 +58,7 @@
       "weather": "embers",
       "ambientBed": "tower",
       "musicTheme": "ceniza",
-      "targetMonsterCount": 1600,
+      "targetMonsterCount": 40000,
       "spawn": { "x": 2540, "z": 490 }
     }
   }

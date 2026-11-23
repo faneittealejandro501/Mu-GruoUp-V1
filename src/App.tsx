@@ -175,7 +175,7 @@ export default function App() {
     x: -200,
     z: -255,
     inSafeCity: true,
-    totalMonsters: 1600,
+    totalMonsters: 40000,
     nearbyMonsters: 0,
     mapName: 'Flaris',
     areaKm2: 9.44,

@@ -59,7 +59,17 @@ Los grupos no aparecen dentro de una capital. En `drops` puedes usar también id
 
 <!-- coderabbit-ai-generated-section:v1:4dc51e6d720b2ec4a53a588044e5c337dc018ac91489ef11513a5d9cae616cd6 -->
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:e1d6e24c87f4b275534c371071376868cab3b523b572817aabc5998c831a3e99 -->
+
 ADMIN se edita únicamente en el repositorio. Publica una nueva compilación para distribuir los cambios. En el juego, Hellpe activa el ataque automático y Combo elige la secuencia. En APKweb, espera a que finalice la descarga antes de desconectarte.
+
+Cada región incluye 4.000 campamentos de diez monstruos y los grupos adicionales configurados en ADMIN. Las posiciones se generan por mapa y solo se cargan modelos cerca del jugador. En `world-rules.json`, `stripManmadeStructures` permite ocultar construcciones si se prefiere.
+
+Esta versión usa [Mobile](https://angelicamarin313555.github.io/Mobile/) para instalarse y actualizarse. Una copia instalada desde otro sitio seguirá vinculada a ese sitio. Exporta la partida desde la copia anterior e impórtala en Mobile antes de retirar la anterior.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 <!-- /coderabbit-ai-generated:v1 -->
 
