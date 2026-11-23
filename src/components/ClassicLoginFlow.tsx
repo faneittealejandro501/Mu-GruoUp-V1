@@ -710,7 +710,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
             ) : (
               <form onSubmit={handleCreateSubmit} className="space-y-3">
                 <div className="text-xs font-semibold text-amber-200">
-                  Nuevo Héroe · Elige una de las 5 Razas de MU Online
+                  Nuevo Héroe · Elige una de las 5 clases de MuGro-up'
                 </div>
                 <div className="grid grid-cols-1 gap-1.5 max-h-[180px] overflow-y-auto mu-scroll">
                   {MU_CLASSES.map((cls) => (

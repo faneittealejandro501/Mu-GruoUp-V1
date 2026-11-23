@@ -2,7 +2,6 @@ import React from 'react';
 import {
   Camera,
   Crosshair,
-  FolderCog,
   Gauge,
   Maximize2,
   Move,
@@ -25,7 +24,6 @@ interface SettingsModalProps {
   onEnterButtonEditor: () => void;
   onRequestLandscapeFullscreen: () => void;
   onSwitchCharacter: () => void;
-  onOpenAdminConfig?: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -37,7 +35,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onEnterButtonEditor,
   onRequestLandscapeFullscreen,
   onSwitchCharacter,
-  onOpenAdminConfig,
 }) => {
   if (!open) return null;
 
@@ -242,19 +239,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <Maximize2 className="w-4 h-4 text-sky-400" />
               Pantalla Horizontal
             </button>
-            {onOpenAdminConfig && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenAdminConfig();
-                }}
-                className="min-h-[42px] px-3 rounded-xl bg-[#182235] hover:bg-slate-700 border border-amber-500/45 text-amber-200 font-semibold text-xs inline-flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <FolderCog className="w-4 h-4 text-amber-400" />
-                Carpeta ADMIN
-              </button>
-            )}
             <button
               type="button"
               onClick={onSwitchCharacter}

@@ -4,6 +4,7 @@ import type { MapId } from '../types/game';
 export const DEFAULT_CAMERA_DISTANCE = 15.5;
 
 export type LootFilterKey =
+  | 'equipment'
   | 'zen'
   | 'life'
   | 'soul'
@@ -14,6 +15,7 @@ export type LootFilterKey =
 
 export interface LootFilterSettings {
   autoLootEnabled: boolean;
+  equipment: boolean;
   zen: boolean;
   life: boolean;
   soul: boolean;
@@ -25,6 +27,7 @@ export interface LootFilterSettings {
 
 export const DEFAULT_LOOT_FILTERS: LootFilterSettings = {
   autoLootEnabled: true,
+  equipment: true,
   zen: true,
   life: true,
   soul: true,

@@ -14,52 +14,52 @@
       "cityRadius": 500,
       "sizeMeters": 3072,
       "minLevel": 1,
-      "maxLevel": 24,
+      "maxLevel": 25,
       "warpZen": 0,
       "weather": "leaves",
       "ambientBed": "wind",
       "musicTheme": "flaris",
       "targetMonsterCount": 1600,
-      "spawn": { "x": -200, "z": -255 }
+      "spawn": { "x": 1336, "z": 1281 }
     },
     "robledal": {
       "name": "Villa del Robledal",
       "cityRadius": 500,
       "sizeMeters": 3072,
-      "minLevel": 25,
-      "maxLevel": 46,
-      "warpZen": 1500,
+      "minLevel": 20,
+      "maxLevel": 48,
+      "warpZen": 2500,
       "weather": "petals",
       "ambientBed": "wind",
       "musicTheme": "robledal",
       "targetMonsterCount": 1600,
-      "spawn": { "x": -1016, "z": 904 }
+      "spawn": { "x": 520, "z": 2440 }
     },
     "puerto": {
       "name": "Puerto de Bruma",
       "cityRadius": 500,
       "sizeMeters": 3072,
-      "minLevel": 47,
-      "maxLevel": 76,
-      "warpZen": 4500,
+      "minLevel": 45,
+      "maxLevel": 72,
+      "warpZen": 6000,
       "weather": "leaves",
       "ambientBed": "water",
       "musicTheme": "puerto",
       "targetMonsterCount": 1600,
-      "spawn": { "x": 764, "z": 854 }
+      "spawn": { "x": 2300, "z": 2390 }
     },
     "ceniza": {
       "name": "Cráter de Ceniza",
       "cityRadius": 500,
       "sizeMeters": 3072,
-      "minLevel": 77,
+      "minLevel": 70,
       "maxLevel": 99,
-      "warpZen": 9500,
+      "warpZen": 12000,
       "weather": "embers",
       "ambientBed": "tower",
       "musicTheme": "ceniza",
       "targetMonsterCount": 1600,
-      "spawn": { "x": 884, "z": -636 }
+      "spawn": { "x": 2540, "z": 490 }
     }
   }
 }

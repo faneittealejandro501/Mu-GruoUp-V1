@@ -1,3 +1,4 @@
+import skillRules from '../../ADMIN/classes-skills.json' with { type: 'json' };
 import type {
   ButtonLayoutItem,
   CharacterComboConfig,
@@ -123,7 +124,7 @@ const RAW_SKILLS: Record<HeroClass, Array<Omit<SkillDef, 'badgeColor'> & { badge
       keyHint: '1',
       cooldownSec: 0.2,
       flyffEffect: 'sfx_hitsword01',
-      flyffSound: 'hit_sword',
+      flyffSound: 'dk_slash',
     },
     {
       id: 'dk_twisting',
@@ -138,7 +139,7 @@ const RAW_SKILLS: Record<HeroClass, Array<Omit<SkillDef, 'badgeColor'> & { badge
       keyHint: '2',
       cooldownSec: 1.0,
       flyffEffect: 'mercenary_keenwheel',
-      flyffSound: 'spin',
+      flyffSound: 'dk_twisting',
     },
     {
       id: 'dk_death_stab',
@@ -184,7 +185,7 @@ const RAW_SKILLS: Record<HeroClass, Array<Omit<SkillDef, 'badgeColor'> & { badge
       isBuff: true,
       cooldownSec: 4.5,
       flyffEffect: 'mercenary_protection',
-      flyffSound: 'buff',
+      flyffSound: 'dk_swell',
     },
     {
       id: 'dk_bloody_strike',
@@ -199,7 +200,7 @@ const RAW_SKILLS: Record<HeroClass, Array<Omit<SkillDef, 'badgeColor'> & { badge
       keyHint: '6',
       cooldownSec: 2.8,
       flyffEffect: 'sfx_sklmeroneguillo01',
-      flyffSound: 'slash',
+      flyffSound: 'dk_stab',
     },
   ],
   DW: [
@@ -216,7 +217,7 @@ const RAW_SKILLS: Record<HeroClass, Array<Omit<SkillDef, 'badgeColor'> & { badge
       keyHint: '1',
       cooldownSec: 0.2,
       flyffEffect: 'sfx_sklpsypsychicbomb01',
-      flyffSound: 'hit_magic',
+      flyffSound: 'dw_orb',
     },
     {
       id: 'dw_evil_spirit',
@@ -231,7 +232,7 @@ const RAW_SKILLS: Record<HeroClass, Array<Omit<SkillDef, 'badgeColor'> & { badge
       keyHint: '2',
       cooldownSec: 1.1,
       flyffEffect: 'sfx_sklpsydemonolgy01',
-      flyffSound: 'dark',
+      flyffSound: 'dw_spirit',
     },
     {
       id: 'dw_hellfire',
@@ -246,7 +247,7 @@ const RAW_SKILLS: Record<HeroClass, Array<Omit<SkillDef, 'badgeColor'> & { badge
       keyHint: '3',
       cooldownSec: 1.6,
       flyffEffect: 'sfx_sklpsysatanolgy01',
-      flyffSound: 'soul',
+      flyffSound: 'cast_fire',
     },
     {
       id: 'dw_ice_storm',
@@ -261,7 +262,7 @@ const RAW_SKILLS: Record<HeroClass, Array<Omit<SkillDef, 'badgeColor'> & { badge
       keyHint: '4',
       cooldownSec: 1.7,
       flyffEffect: 'sfx_sklmagmaglgtref01',
-      flyffSound: 'lightning',
+      flyffSound: 'dw_ice',
     },
     {
       id: 'dw_soul_barrier',
@@ -277,7 +278,7 @@ const RAW_SKILLS: Record<HeroClass, Array<Omit<SkillDef, 'badgeColor'> & { badge
       isBuff: true,
       cooldownSec: 4.5,
       flyffEffect: 'sfx_sklacrdefsupport01',
-      flyffSound: 'potion',
+      flyffSound: 'buff',
     },
     {
       id: 'dw_meteor',
@@ -292,7 +293,7 @@ const RAW_SKILLS: Record<HeroClass, Array<Omit<SkillDef, 'badgeColor'> & { badge
       keyHint: '6',
       cooldownSec: 2.6,
       flyffEffect: 'sfx_sklpsymaximumcrisis01',
-      flyffSound: 'cast_fire',
+      flyffSound: 'dw_meteor',
     },
   ],
   ELF: [
@@ -324,7 +325,7 @@ const RAW_SKILLS: Record<HeroClass, Array<Omit<SkillDef, 'badgeColor'> & { badge
       keyHint: '2',
       cooldownSec: 0.9,
       flyffEffect: 'sfx_sklmerfury01',
-      flyffSound: 'stomp',
+      flyffSound: 'mu_knight_skill2',
     },
     {
       id: 'elf_penetration',
@@ -339,7 +340,7 @@ const RAW_SKILLS: Record<HeroClass, Array<Omit<SkillDef, 'badgeColor'> & { badge
       keyHint: '3',
       cooldownSec: 1.4,
       flyffEffect: 'sfx_sklmagswordwind01',
-      flyffSound: 'wind',
+      flyffSound: 'mu_piercing',
     },
     {
       id: 'elf_ice_arrow',
@@ -354,7 +355,7 @@ const RAW_SKILLS: Record<HeroClass, Array<Omit<SkillDef, 'badgeColor'> & { badge
       keyHint: '4',
       cooldownSec: 1.8,
       flyffEffect: 'sfx_sklassheahealing01',
-      flyffSound: 'heal',
+      flyffSound: 'mu_knight_skill3',
     },
     {
       id: 'elf_heal_bless',
@@ -370,7 +371,7 @@ const RAW_SKILLS: Record<HeroClass, Array<Omit<SkillDef, 'badgeColor'> & { badge
       isBuff: true,
       cooldownSec: 4.0,
       flyffEffect: 'guardian-rain',
-      flyffSound: 'equip_armor',
+      flyffSound: 'heal',
     },
     {
       id: 'elf_arrow_rain',
@@ -385,7 +386,7 @@ const RAW_SKILLS: Record<HeroClass, Array<Omit<SkillDef, 'badgeColor'> & { badge
       keyHint: '6',
       cooldownSec: 2.5,
       flyffEffect: 'sfx_sklmerimpowe01',
-      flyffSound: 'levelup',
+      flyffSound: 'mu_swell_life',
     },
   ],
   DL: [
@@ -417,7 +418,7 @@ const RAW_SKILLS: Record<HeroClass, Array<Omit<SkillDef, 'badgeColor'> & { badge
       keyHint: '2',
       cooldownSec: 1.0,
       flyffEffect: 'harlequin-rebound',
-      flyffSound: 'attack_male',
+      flyffSound: 'pcskilld-springatk',
     },
     {
       id: 'dl_earthshake',
@@ -432,7 +433,7 @@ const RAW_SKILLS: Record<HeroClass, Array<Omit<SkillDef, 'badgeColor'> & { badge
       keyHint: '3',
       cooldownSec: 1.5,
       flyffEffect: 'harlequin-fire',
-      flyffSound: 'fire',
+      flyffSound: 'dl_fireburst',
     },
     {
       id: 'dl_chaotic_diseier',
@@ -447,7 +448,7 @@ const RAW_SKILLS: Record<HeroClass, Array<Omit<SkillDef, 'badgeColor'> & { badge
       keyHint: '4',
       cooldownSec: 2.0,
       flyffEffect: 'harlequin-shadow',
-      flyffSound: 'hurt_male',
+      flyffSound: 'dl_chaotic',
     },
     {
       id: 'dl_critical_damage',
@@ -478,7 +479,7 @@ const RAW_SKILLS: Record<HeroClass, Array<Omit<SkillDef, 'badgeColor'> & { badge
       keyHint: '6',
       cooldownSec: 2.7,
       flyffEffect: 'sfx_sklacrbowautoshot01',
-      flyffSound: 'attack_female',
+      flyffSound: 'dl_firebird',
     },
   ],
   MG: [
@@ -495,7 +496,7 @@ const RAW_SKILLS: Record<HeroClass, Array<Omit<SkillDef, 'badgeColor'> & { badge
       keyHint: '1',
       cooldownSec: 0.2,
       flyffEffect: 'sfx_hitwand01',
-      flyffSound: 'hurt_female',
+      flyffSound: 'mg_swordwind',
     },
     {
       id: 'mg_power_slash',
@@ -510,7 +511,7 @@ const RAW_SKILLS: Record<HeroClass, Array<Omit<SkillDef, 'badgeColor'> & { badge
       keyHint: '2',
       cooldownSec: 1.0,
       flyffEffect: 'sfx_sklmagfireboomerang01',
-      flyffSound: 'land',
+      flyffSound: 'mg_powerslash',
     },
     {
       id: 'mg_flame_strike',
@@ -525,7 +526,7 @@ const RAW_SKILLS: Record<HeroClass, Array<Omit<SkillDef, 'badgeColor'> & { badge
       keyHint: '3',
       cooldownSec: 1.5,
       flyffEffect: 'magician_firebomb',
-      flyffSound: 'death_male',
+      flyffSound: 'mg_flame',
     },
     {
       id: 'mg_lightning_slash',
@@ -540,7 +541,7 @@ const RAW_SKILLS: Record<HeroClass, Array<Omit<SkillDef, 'badgeColor'> & { badge
       keyHint: '4',
       cooldownSec: 1.9,
       flyffEffect: 'sfx_sklelemullgtstm01',
-      flyffSound: 'death_female',
+      flyffSound: 'mg_eleshock',
     },
     {
       id: 'mg_blood_attack',
@@ -579,11 +580,15 @@ const RAW_SKILLS: Record<HeroClass, Array<Omit<SkillDef, 'badgeColor'> & { badge
 export const MU_SKILLS: Record<HeroClass, SkillDef[]> = Object.fromEntries(
   (Object.keys(RAW_SKILLS) as HeroClass[]).map((cls) => [
     cls,
-    RAW_SKILLS[cls].map((sk) => ({ ...sk, badgeColor: sk.badgeColor || sk.colorHex })),
+    RAW_SKILLS[cls].map(sk => {
+      const rules: Record<string, Partial<Pick<SkillDef, 'mpCost' | 'agCost' | 'damageMultiplier' | 'cooldownSec'>>> = skillRules.classes[cls].skillOverrides;
+      return { ...sk, ...rules[sk.id], badgeColor: sk.badgeColor || sk.colorHex };
+    }),
   ]),
 ) as Record<HeroClass, SkillDef[]>;
 
 export const DEFAULT_BUTTON_LAYOUTS: Record<HudButtonId, ButtonLayoutItem> = {
+  helper: { id: 'helper', label: 'Hellpe', xPct: 25, yPct: 65, scale: 1 },
   joystick: { id: 'joystick', label: 'Joystick', xPct: 14, yPct: 76, scale: 1.0 },
   attack: { id: 'attack', label: 'Atacar', xPct: 89, yPct: 78, scale: 1.08 },
   jump: { id: 'jump', label: 'Saltar', xPct: 92, yPct: 58, scale: 0.94 },

@@ -1,3 +1,4 @@
+import { offlineInstallReady } from '../services/offlineInstall';
 import { PrivateBackupPanel } from './PrivateBackupPanel';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -112,8 +113,9 @@ export const ApkSyncDrawer: React.FC<ApkSyncDrawerProps> = ({
     setNotice(null);
     try {
       if (!('serviceWorker' in navigator)) throw new Error('Este navegador no admite la instalación sin conexión.');
-      const registration = await navigator.serviceWorker.getRegistration();
-      setNotice(registration?.active
+      const ready = await offlineInstallReady();
+      if (!ready && navigator.onLine) await applyWebOtaUpdate();
+      setNotice(ready
         ? 'La descarga terminó. Ya puedes abrir el juego sin conexión en este navegador.'
         : 'La descarga aún no está lista. Mantén el juego abierto con conexión y vuelve a comprobar.');
     } catch (error) {

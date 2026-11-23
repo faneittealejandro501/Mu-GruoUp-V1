@@ -619,12 +619,12 @@ def extract_wings_and_shine():
     """Requirement 9-10: Export all 6 Flyff animated wings WITH .chr skeleton + _stand/_walk clips + aura & item shine."""
     wings_out: dict[str, str] = {}
     wing_models = [
-        ('Alas Pluma Blanca (Madrigal)', 'Item_RidRidWinFeather01', 'wing_flyff_feather01.glb'),
-        ('Alas Pluma Dorada (Madrigal)', 'Item_RidRidWinFeather02', 'wing_flyff_feather02.glb'),
-        ('Alas de Ángel Clásicas', 'Item_RidRidWinAngel01', 'wing_flyff_angel01.glb'),
-        ('Alas de Arcángel Radiantes', 'Item_RidRidWinAngel02', 'wing_flyff_angel02.glb'),
-        ('Alas de Profeta Carmesí', 'Item_RidRidWinProphet01', 'wing_flyff_prophet01.glb'),
-        ('Alas de Profeta Celestiales', 'Item_RidRidWinProphet02', 'wing_flyff_prophet02.glb'),
+        ('Alas Pluma Blanca (Madrigal)', 'Item_RidRidWinFeather01', 'wing_mugroup_feather01.glb'),
+        ('Alas Pluma Dorada (Madrigal)', 'Item_RidRidWinFeather02', 'wing_mugroup_feather02.glb'),
+        ('Alas de Ángel Clásicas', 'Item_RidRidWinAngel01', 'wing_mugroup_angel01.glb'),
+        ('Alas de Arcángel Radiantes', 'Item_RidRidWinAngel02', 'wing_mugroup_angel02.glb'),
+        ('Alas de Profeta Carmesí', 'Item_RidRidWinProphet01', 'wing_mugroup_prophet01.glb'),
+        ('Alas de Profeta Celestiales', 'Item_RidRidWinProphet02', 'wing_mugroup_prophet02.glb'),
     ]
     for label, mname, fname in wing_models:
         out_glb = DEST / 'equipo' / fname
@@ -690,10 +690,10 @@ def extract_wings_and_shine():
             print(f'WARN wing {mname}: {ex}', flush=True)
 
     # Alias legacy names so existing items always resolve to animated wings
-    if (DEST / 'equipo' / 'wing_flyff_feather01.glb').exists():
-        shutil.copy2(DEST / 'equipo' / 'wing_flyff_feather01.glb', DEST / 'equipo' / 'wing_flyff_feather.glb')
-    if (DEST / 'equipo' / 'wing_flyff_angel01.glb').exists():
-        shutil.copy2(DEST / 'equipo' / 'wing_flyff_angel01.glb', DEST / 'equipo' / 'wing_flyff_angel.glb')
+    if (DEST / 'equipo' / 'wing_mugroup_feather01.glb').exists():
+        shutil.copy2(DEST / 'equipo' / 'wing_mugroup_feather01.glb', DEST / 'equipo' / 'wing_mugroup_feather.glb')
+    if (DEST / 'equipo' / 'wing_mugroup_angel01.glb').exists():
+        shutil.copy2(DEST / 'equipo' / 'wing_mugroup_angel01.glb', DEST / 'equipo' / 'wing_mugroup_angel.glb')
 
     # Extract wing aura DDS textures + item upgrade shine SFX + sparkle textures
     for e in ENTRIES.values():

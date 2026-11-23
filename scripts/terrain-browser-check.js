@@ -1,5 +1,5 @@
 // Open the DEV Preview with ?headless=1, then run:
-// coderabbit-agent-browser eval --stdin < scripts/flyff-world-browser-check.js
+// coderabbit-agent-browser eval --stdin < scripts/terrain-browser-check.js
 (async () => {
   const e = window.__muEngine;
   if (!e) throw Error('Engine unavailable');

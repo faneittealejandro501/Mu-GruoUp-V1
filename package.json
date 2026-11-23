@@ -10,10 +10,10 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "verify:flyff": "node scripts/check-flyff-assets.mjs",
-    "test:flyff": "node --test scripts/flyff-collision.test.mjs",
+    "verify:flyff": "node scripts/check-world-assets.mjs",
+    "test:flyff": "node --test scripts/world-collision.test.mjs",
     "typecheck:app": "tsc -p tsconfig.app.json",
-    "test:release": "node --test scripts/flyff-collision.test.mjs scripts/flyff-terrain.test.mjs scripts/private-backup.test.ts"
+    "test:release": "node --test scripts/world-collision.test.mjs scripts/world-terrain.test.mjs scripts/private-backup.test.ts"
   },
   "dependencies": {
     "@babylonjs/core": "^9.37.1",

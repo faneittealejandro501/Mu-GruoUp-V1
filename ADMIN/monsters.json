@@ -5,45 +5,45 @@
   "respawnSeconds": 7,
   "glbOverrides": {
     "pompom": "monstruos/mushpang.glb",
-    "bellcap": "monstruos/mushmoot.glb",
+    "bellcap": "monstruos/mushpang.glb",
     "thistlewing": "monstruos/lawolf.glb",
     "silkbeetle": "monstruos/burudeng.glb",
     "dewkin": "monstruos/aibatt.glb",
-    "tombwatch": "monstruos/tombstonebearer.glb",
+    "tombwatch": "monstruos/demian.glb",
     "blackfang": "monstruos/lawolf.glb",
-    "bronzehorn": "monstruos/dumbbull.glb",
+    "bronzehorn": "monstruos/rockmuscle.glb",
     "cryptwisp": "monstruos/demian.glb",
-    "bonecrawler": "monstruos/wormveduque.glb",
-    "mossback": "monstruos/greemong.glb",
-    "acorn": "monstruos/steelknight.glb",
-    "poppy": "monstruos/nyangnyang.glb",
-    "lanternmoth": "monstruos/mothbee.glb",
-    "glacierbud": "monstruos/yeti01.glb",
-    "shale": "monstruos/elderguard.glb",
-    "barkreaver": "monstruos/nautrepy.glb",
-    "razorspider": "monstruos/garbagepider.glb",
-    "bogjaw": "monstruos/watangka.glb",
+    "bonecrawler": "monstruos/flybat.glb",
+    "mossback": "monstruos/grrr.glb",
+    "acorn": "monstruos/clockwork.glb",
+    "poppy": "monstruos/pukepuke.glb",
+    "lanternmoth": "monstruos/flybat.glb",
+    "glacierbud": "monstruos/grrr.glb",
+    "shale": "monstruos/clockwork.glb",
+    "barkreaver": "monstruos/mrpumpkin.glb",
+    "razorspider": "monstruos/mushpang.glb",
+    "bogjaw": "monstruos/pukepuke.glb",
     "ivorybull": "monstruos/rockmuscle.glb",
-    "shellclack": "monstruos/peakyturtle.glb",
-    "windkite": "monstruos/flbyrigen.glb",
+    "shellclack": "monstruos/doridoma.glb",
+    "windkite": "monstruos/bang.glb",
     "bubblefin": "monstruos/pukepuke.glb",
-    "mintjelly": "monstruos/boo.glb",
-    "pearlward": "monstruos/hoppre.glb",
-    "blackreef": "monstruos/popcrank.glb",
-    "riptide": "monstruos/iren.glb",
+    "mintjelly": "monstruos/burudeng.glb",
+    "pearlward": "monstruos/cardpuppet.glb",
+    "blackreef": "monstruos/jackhammer.glb",
+    "riptide": "monstruos/demian.glb",
     "stormdrake": "monstruos/meteonyker.glb",
-    "anchorshade": "monstruos/gigglebox.glb",
-    "saltfang": "monstruos/yeti02.glb",
-    "sparkmite": "monstruos/roachfl.glb",
+    "anchorshade": "monstruos/cardpuppet.glb",
+    "saltfang": "monstruos/grrr.glb",
+    "sparkmite": "monstruos/grrr.glb",
     "cinderlily": "monstruos/mia.glb",
-    "honeydrake": "monstruos/kern.glb",
-    "ashgull": "monstruos/muffrin.glb",
-    "glassimp": "monstruos/driller.glb",
-    "slagwyrm": "monstruos/krrr.glb",
-    "obsidian": "monstruos/skeldevil.glb",
-    "ashclaw": "monstruos/steamwalker.glb",
-    "redwake": "monstruos/glaphan.glb",
-    "voidram": "monstruos/zombiger.glb"
+    "honeydrake": "monstruos/jackhammer.glb",
+    "ashgull": "monstruos/lawolf.glb",
+    "glassimp": "monstruos/jackhammer.glb",
+    "slagwyrm": "monstruos/mia.glb",
+    "obsidian": "monstruos/mrpumpkin.glb",
+    "ashclaw": "monstruos/jackhammer.glb",
+    "redwake": "monstruos/flybat.glb",
+    "voidram": "monstruos/grrr.glb"
   },
   "extraCatalog": [
     {
@@ -56,7 +56,7 @@
       "damage": 58,
       "xp": 390,
       "zen": 4800,
-      "glb": "monstruos/antiquery.glb",
+      "glb": "monstruos/aibatt.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_antiquery"
     },
@@ -70,8 +70,8 @@
       "damage": 245,
       "xp": 2950,
       "zen": 38000,
-      "glb": "monstruos/axkeakoon.glb",
-      "sfx": "efectos/sfx_hitcritical01.json",
+      "glb": "monstruos/bang.glb",
+      "sfx": "efectos/sfx_sklmerfury01.json",
       "wav": "npc_keakoon"
     },
     {
@@ -84,7 +84,7 @@
       "damage": 24,
       "xp": 145,
       "zen": 1700,
-      "glb": "monstruos/circusbear.glb",
+      "glb": "monstruos/bang.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_bear"
     },
@@ -98,8 +98,8 @@
       "damage": 135,
       "xp": 1280,
       "zen": 15800,
-      "glb": "monstruos/driller.glb",
-      "sfx": "efectos/sfx_hitknuckle01.json",
+      "glb": "monstruos/jackhammer.glb",
+      "sfx": "efectos/mercenary_splmash.json",
       "wav": "npc_driller"
     },
     {
@@ -112,7 +112,7 @@
       "damage": 21,
       "xp": 120,
       "zen": 1450,
-      "glb": "monstruos/dumbbull.glb",
+      "glb": "monstruos/rockmuscle.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_dumbbull"
     },
@@ -126,8 +126,8 @@
       "damage": 85,
       "xp": 690,
       "zen": 8400,
-      "glb": "monstruos/elderguard.glb",
-      "sfx": "efectos/sfx_hitknuckle01.json",
+      "glb": "monstruos/clockwork.glb",
+      "sfx": "efectos/mercenary_splmash.json",
       "wav": "npc_elderguard"
     },
     {
@@ -140,8 +140,8 @@
       "damage": 118,
       "xp": 1040,
       "zen": 12600,
-      "glb": "monstruos/flbyrigen.glb",
-      "sfx": "efectos/obj_thunder01.json",
+      "glb": "monstruos/demian.glb",
+      "sfx": "efectos/sfx_sklmagmaglgtref01.json",
       "wav": "npc_flybrigen"
     },
     {
@@ -154,8 +154,8 @@
       "damage": 162,
       "xp": 1600,
       "zen": 19500,
-      "glb": "monstruos/garbagepider.glb",
-      "sfx": "efectos/sfx_hitcritical01.json",
+      "glb": "monstruos/doridoma.glb",
+      "sfx": "efectos/sfx_sklmerfury01.json",
       "wav": "npc_spider"
     },
     {
@@ -168,8 +168,8 @@
       "damage": 320,
       "xp": 4300,
       "zen": 55000,
-      "glb": "monstruos/glaphan.glb",
-      "sfx": "efectos/sfx_heavenfire01.json",
+      "glb": "monstruos/flybat.glb",
+      "sfx": "efectos/sfx_sklelefirfirbrd01.json",
       "wav": "npc_glaphan"
     },
     {
@@ -182,7 +182,7 @@
       "damage": 71,
       "xp": 510,
       "zen": 6200,
-      "glb": "monstruos/gongury.glb",
+      "glb": "monstruos/flybat.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_gongury"
     },
@@ -196,8 +196,8 @@
       "damage": 79,
       "xp": 590,
       "zen": 7200,
-      "glb": "monstruos/greemong.glb",
-      "sfx": "efectos/obj_thunder01.json",
+      "glb": "monstruos/grrr.glb",
+      "sfx": "efectos/sfx_sklmagmaglgtref01.json",
       "wav": "npc_greemong"
     },
     {
@@ -210,7 +210,7 @@
       "damage": 29,
       "xp": 190,
       "zen": 2300,
-      "glb": "monstruos/hoppre.glb",
+      "glb": "monstruos/hobo.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_hoppre"
     },
@@ -224,8 +224,8 @@
       "damage": 170,
       "xp": 1720,
       "zen": 21000,
-      "glb": "monstruos/iren.glb",
-      "sfx": "efectos/obj_thunder01.json",
+      "glb": "monstruos/jackhammer.glb",
+      "sfx": "efectos/sfx_sklmagmaglgtref01.json",
       "wav": "npc_iren"
     },
     {
@@ -238,8 +238,8 @@
       "damage": 365,
       "xp": 5100,
       "zen": 68000,
-      "glb": "monstruos/krrr.glb",
-      "sfx": "efectos/sfx_hitcritical01.json",
+      "glb": "monstruos/lawolf.glb",
+      "sfx": "efectos/sfx_sklmerfury01.json",
       "wav": "npc_krrr"
     },
     {
@@ -252,8 +252,8 @@
       "damage": 49,
       "xp": 330,
       "zen": 4000,
-      "glb": "monstruos/leyena.glb",
-      "sfx": "efectos/obj_thunder01.json",
+      "glb": "monstruos/meteonyker.glb",
+      "sfx": "efectos/sfx_sklmagmaglgtref01.json",
       "wav": "npc_leyena"
     },
     {
@@ -266,8 +266,8 @@
       "damage": 190,
       "xp": 1980,
       "zen": 24500,
-      "glb": "monstruos/luia.glb",
-      "sfx": "efectos/sfx_heavenfire01.json",
+      "glb": "monstruos/mia.glb",
+      "sfx": "efectos/sfx_sklelefirfirbrd01.json",
       "wav": "npc_luia"
     },
     {
@@ -280,7 +280,7 @@
       "damage": 17,
       "xp": 95,
       "zen": 1100,
-      "glb": "monstruos/mothbee.glb",
+      "glb": "monstruos/flybat.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_mothbee"
     },
@@ -294,8 +294,8 @@
       "damage": 236,
       "xp": 2800,
       "zen": 36000,
-      "glb": "monstruos/muffrin.glb",
-      "sfx": "efectos/sfx_hitcritical01.json",
+      "glb": "monstruos/mushpang.glb",
+      "sfx": "efectos/sfx_sklmerfury01.json",
       "wav": "npc_muffrin"
     },
     {
@@ -308,7 +308,7 @@
       "damage": 38,
       "xp": 290,
       "zen": 3500,
-      "glb": "monstruos/mushmoot.glb",
+      "glb": "monstruos/mushpang.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_mushmoot",
       "isBoss": true
@@ -323,7 +323,7 @@
       "damage": 18,
       "xp": 102,
       "zen": 1200,
-      "glb": "monstruos/mushpoie.glb",
+      "glb": "monstruos/rockmuscle.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_mushpoie"
     },
@@ -337,8 +337,8 @@
       "damage": 67,
       "xp": 465,
       "zen": 5700,
-      "glb": "monstruos/nautrepy.glb",
-      "sfx": "efectos/obj_thunder01.json",
+      "glb": "monstruos/aibatt.glb",
+      "sfx": "efectos/sfx_sklmagmaglgtref01.json",
       "wav": "npc_nautrepy"
     },
     {
@@ -351,7 +351,7 @@
       "damage": 12,
       "xp": 62,
       "zen": 740,
-      "glb": "monstruos/nyangnyang.glb",
+      "glb": "monstruos/pukepuke.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_nyangnyang"
     },
@@ -365,8 +365,8 @@
       "damage": 154,
       "xp": 1500,
       "zen": 18500,
-      "glb": "monstruos/popcrank.glb",
-      "sfx": "efectos/sfx_hitknuckle01.json",
+      "glb": "monstruos/jackhammer.glb",
+      "sfx": "efectos/mercenary_splmash.json",
       "wav": "npc_popcrank"
     },
     {
@@ -379,8 +379,8 @@
       "damage": 230,
       "xp": 2720,
       "zen": 35000,
-      "glb": "monstruos/roachfl.glb",
-      "sfx": "efectos/sfx_hitcritical01.json",
+      "glb": "monstruos/burudeng.glb",
+      "sfx": "efectos/sfx_sklmerfury01.json",
       "wav": "npc_roachfl"
     },
     {
@@ -393,8 +393,8 @@
       "damage": 425,
       "xp": 6800,
       "zen": 92000,
-      "glb": "monstruos/sadking01.glb",
-      "sfx": "efectos/sfx_heavenfire01.json",
+      "glb": "monstruos/cardpuppet.glb",
+      "sfx": "efectos/sfx_sklelefirfirbrd01.json",
       "wav": "npc_sadking",
       "isBoss": true
     },
@@ -408,8 +408,8 @@
       "damage": 274,
       "xp": 3480,
       "zen": 44000,
-      "glb": "monstruos/skeldevil.glb",
-      "sfx": "efectos/sfx_hitcritical01.json",
+      "glb": "monstruos/clockwork.glb",
+      "sfx": "efectos/sfx_sklmerfury01.json",
       "wav": "npc_skeldevil"
     },
     {
@@ -422,8 +422,8 @@
       "damage": 130,
       "xp": 1200,
       "zen": 14800,
-      "glb": "monstruos/steamwalker.glb",
-      "sfx": "efectos/sfx_hitknuckle01.json",
+      "glb": "monstruos/jackhammer.glb",
+      "sfx": "efectos/mercenary_splmash.json",
       "wav": "npc_steamwalker"
     },
     {
@@ -436,8 +436,8 @@
       "damage": 81,
       "xp": 640,
       "zen": 7800,
-      "glb": "monstruos/steelknight.glb",
-      "sfx": "efectos/sfx_hitknuckle01.json",
+      "glb": "monstruos/clockwork.glb",
+      "sfx": "efectos/mercenary_splmash.json",
       "wav": "npc_steelknight"
     },
     {
@@ -450,7 +450,7 @@
       "damage": 46,
       "xp": 310,
       "zen": 3800,
-      "glb": "monstruos/tombstonebearer.glb",
+      "glb": "monstruos/demian.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_tombstone"
     },
@@ -464,8 +464,8 @@
       "damage": 198,
       "xp": 2150,
       "zen": 26500,
-      "glb": "monstruos/volt.glb",
-      "sfx": "efectos/obj_thunder01.json",
+      "glb": "monstruos/flybat.glb",
+      "sfx": "efectos/sfx_sklmagmaglgtref01.json",
       "wav": "npc_volt"
     },
     {
@@ -478,8 +478,8 @@
       "damage": 288,
       "xp": 3720,
       "zen": 47000,
-      "glb": "monstruos/wormveduque.glb",
-      "sfx": "efectos/sfx_hitcritical01.json",
+      "glb": "monstruos/grrr.glb",
+      "sfx": "efectos/sfx_sklmerfury01.json",
       "wav": "npc_wormveduque"
     },
     {
@@ -492,7 +492,7 @@
       "damage": 74,
       "xp": 540,
       "zen": 6500,
-      "glb": "monstruos/yeti01.glb",
+      "glb": "monstruos/grrr.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_yeti"
     },
@@ -506,8 +506,8 @@
       "damage": 110,
       "xp": 960,
       "zen": 11800,
-      "glb": "monstruos/yeti02.glb",
-      "sfx": "efectos/obj_thunder01.json",
+      "glb": "monstruos/grrr.glb",
+      "sfx": "efectos/sfx_sklmagmaglgtref01.json",
       "wav": "npc_yeti"
     },
     {
@@ -520,8 +520,8 @@
       "damage": 335,
       "xp": 4550,
       "zen": 59000,
-      "glb": "monstruos/zombiger.glb",
-      "sfx": "efectos/sfx_hitcritical01.json",
+      "glb": "monstruos/grrr.glb",
+      "sfx": "efectos/sfx_sklmerfury01.json",
       "wav": "npc_zombiger"
     },
     {
@@ -534,8 +534,8 @@
       "damage": 105,
       "xp": 910,
       "zen": 11200,
-      "glb": "monstruos/boo.glb",
-      "sfx": "efectos/obj_thunder01.json",
+      "glb": "monstruos/meteonyker.glb",
+      "sfx": "efectos/sfx_sklmagmaglgtref01.json",
       "wav": "npc_boo"
     },
     {
@@ -548,8 +548,8 @@
       "damage": 268,
       "xp": 3350,
       "zen": 42500,
-      "glb": "monstruos/carrierbomb.glb",
-      "sfx": "efectos/sfx_hitknuckle01.json",
+      "glb": "monstruos/mrpumpkin.glb",
+      "sfx": "efectos/mercenary_splmash.json",
       "wav": "npc_carrierbomb"
     },
     {
@@ -562,7 +562,7 @@
       "damage": 56,
       "xp": 375,
       "zen": 4600,
-      "glb": "monstruos/gigglebox.glb",
+      "glb": "monstruos/cardpuppet.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_gigglebox"
     },
@@ -576,8 +576,8 @@
       "damage": 382,
       "xp": 5600,
       "zen": 74000,
-      "glb": "monstruos/kern.glb",
-      "sfx": "efectos/sfx_heavenfire01.json",
+      "glb": "monstruos/mushpang.glb",
+      "sfx": "efectos/sfx_sklelefirfirbrd01.json",
       "wav": "npc_kern"
     },
     {
@@ -590,7 +590,7 @@
       "damage": 98,
       "xp": 840,
       "zen": 10200,
-      "glb": "monstruos/peakyturtle.glb",
+      "glb": "monstruos/doridoma.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_peakyturtle"
     },
@@ -604,8 +604,8 @@
       "damage": 225,
       "xp": 2650,
       "zen": 33000,
-      "glb": "monstruos/watangka.glb",
-      "sfx": "efectos/sfx_hitcritical01.json",
+      "glb": "monstruos/rockmuscle.glb",
+      "sfx": "efectos/sfx_sklmerfury01.json",
       "wav": "npc_watangka",
       "isBoss": true
     }
