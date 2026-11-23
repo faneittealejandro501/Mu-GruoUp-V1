@@ -1,3 +1,4 @@
+import otaManifest from './public/ota-manifest.json' with { type: 'json' };
 import 'dotenv/config';
 import express from 'express';
 import fs from 'fs';
@@ -26,7 +27,7 @@ import type {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PORT = 3000;
-const APP_VERSION = '2.3.0';
+const APP_VERSION = otaManifest.version;
 const CLOUD_STORE_PATH = path.join(__dirname, '.mugroup-duels.json');
 
 interface CloudStoreData {

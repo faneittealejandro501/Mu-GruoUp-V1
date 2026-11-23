@@ -1,18 +1,19 @@
+import { HeroMotion } from './content/HeroMotion';
+import { createWaterMaterial, createWaterMesh, updateWaterMaterial } from './content/WaterSurface';
+import type { WingRig } from './content/WingRig';
 import {
   AbstractMesh,
   AnimationGroup,
   AssetContainer,
   Color3,
   Mesh,
-  MeshBuilder,
   Node,
   ParticleSystem,
   PointLight,
   Scene,
   SceneLoader,
   Skeleton,
-  StandardMaterial,
-  Texture,
+  ShaderMaterial,
   TransformNode,
   Vector3,
 } from '@babylonjs/core';
@@ -121,17 +122,29 @@ export class FlyffActor {
   public fragments: GarmentFragment[] = [];
   public wingAnimations: AnimationGroup[] = [];
   public wingSocket: TransformNode | null = null;
+  public wingRig: WingRig | null = null;
+  public wingPhase = 0;
   public wingLight: PointLight | null = null;
   public wingParticles: ParticleSystem | null = null;
   public enhanceParticles: ParticleSystem[] = [];
   public wingScaleMultiplier = 1;
   private activeClip = '';
+  private combatMotion: HeroMotion | null = null;
   private wingMode: 'stand' | 'walk' | '' = '';
 
   constructor(scene: Scene, config: PersonajeConfig) {
     this.scene = scene;
     this.config = config;
     this.root = new TransformNode(`flyff_actor_${config.id}`, scene);
+    const restorePose = scene.onBeforeAnimationsObservable.add(() => this.combatMotion?.restore());
+    const followSpine = scene.onAfterAnimationsObservable.add(() => {
+      this.combatMotion?.pose();
+      this.wingRig?.update(this.wingPhase, this.wingMode === 'walk');
+    });
+    this.root.onDisposeObservable.addOnce(() => {
+      scene.onBeforeAnimationsObservable.remove(restorePose);
+      scene.onAfterAnimationsObservable.remove(followSpine);
+    });
 
     const slots = ['torso', 'helmet', 'pants', 'hands', 'feet', 'weapon', 'offhand', 'wings'];
     this.gear = {};
@@ -212,7 +225,12 @@ export class FlyffActor {
       meshes: [...bodyContainer.meshes],
     };
 
+    this.combatMotion = new HeroMotion(this.config.classId, outfitContainer.transformNodes);
     this.playClip('idle', true);
+  }
+
+  public setCombatMotion(seconds: number, slot: number, support: boolean): void {
+    this.combatMotion?.start(seconds, slot, support);
   }
 
   public hasClip(name: string): boolean {
@@ -221,7 +239,7 @@ export class FlyffActor {
   }
 
   public playClip(name: string, loop = true): number {
-    if (this.activeClip === name && loop) return 0;
+    if (this.activeClip === name && loop && this.outfit.animations.some(g => g.name === name && g.isPlaying)) return 0;
     const lower = name.toLowerCase();
     const group =
       this.outfit.animations.find((a) => a.name === name) ||
@@ -247,7 +265,7 @@ export class FlyffActor {
   }
 
   public playWingAnimation(mode: 'stand' | 'walk'): void {
-    if (!this.gear.wings?.equipped || this.wingAnimations.length === 0) return;
+    if (!this.gear.wings?.equipped) return;
     if (this.wingMode === mode && this.wingAnimations.some((a) => a.isPlaying)) {
       return;
     }
@@ -269,7 +287,8 @@ export class FlyffActor {
       if (ag !== target && ag.isPlaying) ag.stop();
     }
     try {
-      target.start(true, speedRatio, target.from, target.to, false);
+      if (target.isPlaying) target.speedRatio = speedRatio;
+      else target.start(true, speedRatio, target.from, target.to, false);
     } catch {
       // ignore in NullEngine
     }
@@ -325,6 +344,7 @@ export class FlyffActor {
   }
 
   public update(dt: number, groundInfo: { height?: number } = { height: 0 }): void {
+    this.combatMotion?.tick(dt);
     const normalizedGround = { height: groundInfo.height ?? 0 };
     for (let i = this.fragments.length - 1; i >= 0; i--) {
       const alive = this.fragments[i].update(dt, normalizedGround);
@@ -370,8 +390,7 @@ export class FlyffWorldStreamer {
   private collisionCache = new Map<string, CollisionGeometryData>();
   private streamingLock: Promise<void> | null = null;
   private getWorldClock: () => number;
-  private waterMaterial: StandardMaterial | null = null;
-  private waterTexture: Texture | null = null;
+  private waterMaterial: ShaderMaterial | null = null;
   private lastHeroX = 1336;
   private lastHeroZ = 1281;
 
@@ -421,29 +440,18 @@ export class FlyffWorldStreamer {
     return h0 + (h1 - h0) * tz;
   }
 
-  private getWaterMaterial(): StandardMaterial {
-    if (this.waterMaterial) {
-      return this.waterMaterial;
+  public shorelineLevel(x: number, y: number, z: number): number {
+    let nearest = 24;
+    for (const tile of this.tiles.values()) {
+      if (!tile.waterMeshes.length || !tile.def.water) continue;
+      for (const cell of tile.def.water) {
+        if (cell.height <= 0 || Math.abs(cell.height - y) > 8) continue;
+        const dx = Math.max(0, Math.abs(cell.x - x) - cell.size / 2);
+        const dz = Math.max(0, Math.abs(cell.z - z) - cell.size / 2);
+        nearest = Math.min(nearest, Math.hypot(dx, dz));
+      }
     }
-    const mat = new StandardMaterial('mugroup_water_mat', this.scene);
-    try {
-      const tex = new Texture('./mugroup/efectos/texturas/water.png', this.scene, false, true);
-      tex.wrapU = Texture.WRAP_ADDRESSMODE;
-      tex.wrapV = Texture.WRAP_ADDRESSMODE;
-      tex.uScale = 4;
-      tex.vScale = 4;
-      mat.diffuseTexture = tex;
-      this.waterTexture = tex;
-    } catch {
-      // fallback color in headless mode
-    }
-    mat.diffuseColor = new Color3(0.24, 0.62, 0.86);
-    mat.emissiveColor = new Color3(0.06, 0.22, 0.34);
-    mat.specularColor = new Color3(0.55, 0.78, 0.95);
-    mat.alpha = 0.78;
-    mat.backFaceCulling = false;
-    this.waterMaterial = mat;
-    return mat;
+    return 1 - nearest / 24;
   }
 
   private async getCollisionGeometry(path: string): Promise<CollisionGeometryData | null> {
@@ -475,10 +483,7 @@ export class FlyffWorldStreamer {
   }
 
   public update(dt: number, heroX: number, heroZ: number): void {
-    if (this.waterTexture) {
-      this.waterTexture.uOffset = (this.waterTexture.uOffset + dt * 0.045) % 1;
-      this.waterTexture.vOffset = (this.waterTexture.vOffset + dt * 0.03) % 1;
-    }
+    if (this.waterMaterial) updateWaterMaterial(this.waterMaterial, this.scene, this.getWorldClock());
     this.updateDetailVisibility(heroX, heroZ);
   }
 
@@ -584,33 +589,13 @@ export class FlyffWorldStreamer {
 
     const waterMeshes: Mesh[] = [];
 
-    // Real animated water surfaces (only valid non-zero height entries)
-    if (Array.isArray(tileDef.water)) {
-      const validWater = tileDef.water.filter((w) => w.height > 0 && w.size > 0);
-      if (validWater.length > 0) {
-        const wMat = this.getWaterMaterial();
-        for (let wi = 0; wi < validWater.length; wi++) {
-          const w = validWater[wi];
-          const wPlane = MeshBuilder.CreateGround(
-            `water_${tileDef.id}_${wi}`,
-            { width: w.size, height: w.size, subdivisions: 1 },
-            this.scene,
-          );
-          wPlane.parent = root;
-          wPlane.position.set(w.x, w.height, w.z);
-          wPlane.material = wMat;
-          wPlane.isPickable = false;
-          waterMeshes.push(wPlane);
-        }
-        if (waterMeshes.length > 1) {
-          const surface = Mesh.MergeMeshes(waterMeshes, true, true);
-          if (surface) {
-            surface.parent = root;
-            surface.isPickable = false;
-            waterMeshes.splice(0, waterMeshes.length, surface);
-          }
-        }
-      }
+    const water = createWaterMesh(`water_${tileDef.id}`, this.scene, tileDef.water ?? []);
+    if (water) {
+      this.waterMaterial ??= createWaterMaterial(this.scene);
+      updateWaterMaterial(this.waterMaterial, this.scene, clock);
+      water.parent = root;
+      water.material = this.waterMaterial;
+      waterMeshes.push(water);
     }
 
     this.tiles.set(tileDef.id, {
@@ -758,12 +743,10 @@ export class FlyffWorldStreamer {
     this.containers.clear();
     try {
       this.waterMaterial?.dispose();
-      this.waterTexture?.dispose();
     } catch {
       // ignore
     }
     this.waterMaterial = null;
-    this.waterTexture = null;
   }
 }
 

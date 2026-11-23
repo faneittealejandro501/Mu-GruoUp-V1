@@ -1,43 +1,63 @@
-// Open the DEV Preview with ?headless=1, then run:
+// Open the dev preview with ?headless=1&autostart=1, then run:
 // coderabbit-agent-browser eval --stdin < scripts/world-wings-browser-check.js
 (async () => {
   const engine = window.__muEngine;
-  if (!engine) throw Error('Engine unavailable');
-  const assert = (value, message) => { if (!value) throw Error(message); };
+  if (!engine?.flyff.actor) throw Error('Engine unavailable');
   const { getStarterItemsForMuClass } = await import('/src/data/muSkillsAndClasses.ts');
-  const { getWingEvoTier } = await import('/src/game/worldPhysicsMath.ts');
   const library = await (await fetch('/mugroup/equipo.json')).json();
-  const sampleNames = [...new Map(Object.entries(library.wings).map(([name, file]) => [file, name])).entries()];
-  const f = engine.flyff;
+  const assets = [...new Map(Object.entries(library.wings).map(([name, file]) => [file, name])).entries()];
+  const original = engine.flyff.actor.config;
+  const originalItems = engine.flyff.getLastEquippedItems();
+  const originalMode = engine.mode;
   engine.setMode('character_select');
-  let staticWings = 0, animatedWings = 0;
-  for (const sex of ['male', 'female']) {
-    const equipment = getStarterItemsForMuClass('fixture', 'Fixture', 'DL').filter(i => i.slot !== 'wings');
-    for (const [file, name] of sampleNames) {
-      const wing = { id: 'fixture-wing', name, slot: 'wings', category: 'wings', isEquipped: true, evoTier: getWingEvoTier(name) };
-      await engine.syncHeroAppearance('DL', [...equipment, wing], sex);
-      const actor = f.actor, mount = actor.wingsNode;
-      assert(mount.parent.name.startsWith('Bip02 Spine'), 'Missing back attachment for ' + sex);
-      const meshes = actor.outfit.meshes.filter(m => m.name.startsWith('equip_wings_') && m.isEnabled());
-      assert(meshes.length && meshes.every(m => m.name.includes(file)), 'Wrong wings equipped: ' + name);
-      const rotation = mount.rotation.asArray(), origin = mount.position.asArray();
-      const positions = meshes[0].getVerticesData('position').slice();
-      for (let frame = 0; frame < 12; frame++) actor.update(1 / 60, { moving: true, hovering: true, externalAirPhase: 'grounded' });
-      assert(mount.rotation.asArray().every((v, i) => v === rotation[i]), 'Flap rotated the entire attachment');
-      assert(mount.position.asArray().every((v, i) => v === origin[i]), 'Flap moved the attachment');
-      assert(actor.clip === 'idle', 'Played the ground run clip while floating');
-      const running = actor.scene.animationGroups.filter(g => /^wing/i.test(g.name) && g.isPlaying);
-      if (file.startsWith('equipo/')) {
-        assert(!running.length, 'Hidden native wing animation is still playing');
-        assert(meshes[0].getVerticesData('position').some((v, i) => Math.abs(v - positions[i]) > 0.005), 'Missing separate wing motion');
-        staticWings++;
-      } else {
-        assert(!actor.wingFlex && running.length === 1, 'Expected only the equipped native wing to animate');
-        animatedWings++;
+  const failed = new Map();
+  let checked = 0;
+  let lowest = Infinity;
+  try {
+    for (const cls of ['DK', 'DW', 'DL', 'MG', 'ELF']) {
+      for (const sex of ['male', 'female']) {
+        const equipment = getStarterItemsForMuClass('fixture', 'Fixture', cls).filter(i => i.slot !== 'wings');
+        for (const [file, name] of assets) {
+          // The map is in selection mode, so these frames test actual rest poses
+          // and the wing's own animated mesh without ground movement masking it.
+          const wing = { id: 'fixture-wing', name, slot: 'wings', category: 'wings', isEquipped: true, enhanceLevel: 0 };
+          await engine.syncHeroAppearance(cls, [...equipment, wing], sex);
+          const actor = engine.flyff.actor;
+          const mount = actor.wingSocket;
+          const meshes = actor.gear.wings.meshes;
+          if (!mount || mount.parent !== actor.root || !meshes.length) throw Error('Missing equipment: ' + file);
+          const spine = actor.outfit.nodes.find(node => node.name === 'Bip02 Spine2');
+          for (let frame = 0; frame < 3; frame++) {
+            actor.wingRig.update(frame / 3, false);
+            const at = mount.computeWorldMatrix(true).getTranslation();
+            const top = spine.computeWorldMatrix(true).getTranslation();
+            if (at.subtract(top).length() > 0.15) throw Error('Detached spine: ' + cls + '/' + sex);
+            const rootY = actor.root.computeWorldMatrix(true).getTranslation().y;
+            for (const mesh of meshes) {
+              mesh.skeleton?.prepare(true);
+              const m = mesh.computeWorldMatrix(true).m;
+              const verts = mesh.getPositionData(true, true);
+              if (!verts?.length) throw Error('No vertices: ' + file);
+              for (let i = 0; i < verts.length; i += 3) {
+                const y = verts[i] * m[1] + verts[i + 1] * m[5] + verts[i + 2] * m[9] + m[13] - rootY;
+                lowest = Math.min(lowest, y);
+                if (y < 0.08) {
+                  const id = `${cls}/${sex}/${file}`;
+                  failed.set(id, Math.min(y, failed.get(id) ?? Infinity));
+                }
+              }
+            }
+          }
+          checked++;
+        }
+        await engine.syncHeroAppearance(cls, equipment, sex);
+        if (engine.flyff.actor.wingSocket || engine.flyff.actor.gear.wings.equipped) throw Error('Wings remain equipped');
       }
     }
-    await engine.syncHeroAppearance('DL', equipment, sex);
-    assert(!f.actor.wingFlex && !f.actor.wingsNode.isEnabled(), 'Unequipped wings kept animating visibly');
+    if (failed.size) throw Error(JSON.stringify([...failed]));
+    return { meshesChecked: checked, minimumGroundClearance: lowest };
+  } finally {
+    await engine.syncHeroAppearance(original.classId, originalItems, original.sex);
+    engine.setMode(originalMode);
   }
-  return { staticWings, animatedWings };
 })()

@@ -1,5 +1,7 @@
-const DEFAULT_REPO_SLUG = 'ZoeyJF555/Mu-Offline-Mobile-nuevo-';
-const LOCAL_VERSION = '2.3.0';
+import manifest from '../../public/ota-manifest.json' with { type: 'json' };
+
+const DEFAULT_REPO_SLUG = manifest.repo;
+const LOCAL_VERSION = manifest.version;
 const LS_REPO_KEY = 'mu_linked_github_repo';
 const LS_CLOUD_URL_KEY = 'mu_cloud_api_url';
 
@@ -26,7 +28,9 @@ function normalizeRepoSlug(raw: string): string {
 export function getLinkedGithubRepoSlug(): string {
   try {
     const saved = localStorage.getItem(LS_REPO_KEY);
-    return saved ? normalizeRepoSlug(saved) : DEFAULT_REPO_SLUG;
+    const slug = saved ? normalizeRepoSlug(saved) : DEFAULT_REPO_SLUG;
+    // Existing installs inherited the predecessor repository as their default.
+    return slug.toLowerCase() === 'zoeyjf555/mu-offline-mobile-nuevo-' ? DEFAULT_REPO_SLUG : slug;
   } catch {
     return DEFAULT_REPO_SLUG;
   }
@@ -134,6 +138,7 @@ export async function applyWebOtaUpdate(): Promise<boolean> {
 export function watchWebUpdates(): () => void {
   const check = () => void applyWebOtaUpdate();
   window.addEventListener('online', check);
+  check();
   const timer = window.setInterval(check, 20 * 60 * 1000);
   return () => {
     window.removeEventListener('online', check);
