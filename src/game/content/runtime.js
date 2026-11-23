@@ -104,10 +104,10 @@ export class FlyffEffectRuntime {
   }
 
   async play(effectName, position, scale = 1.0, opts = {}) {
-    await this.playEffect(effectName, position, opts?.colorHex || '#fbbf24', scale);
+    await this.playEffect(effectName, position, opts?.colorHex || '#fbbf24', scale, opts.casterPos);
   }
 
-  async playEffect(effectName, position, colorHex = '#fbbf24', baseScale = 1.0) {
+  async playEffect(effectName, position, colorHex = '#fbbf24', baseScale = 1.0, casterPos) {
     if (!this.scene || this.scene.isDisposed) return;
     const def = await this.loadEffectDef(effectName);
     if (this.scene.isDisposed) return;
@@ -119,7 +119,10 @@ export class FlyffEffectRuntime {
     const createdMeshes = [];
     const createdMats = [];
 
-    const parts = Array.isArray(def?.parts) ? def.parts.slice(0, 5) : [];
+    const fps = def?.fps || 30;
+    const tracks = [];
+    const parts = (def?.parts || []).filter(part => part.enabled !== false && part.textures?.length);
+    const duration = Math.max(0.35, ...parts.map(p => (p.keys?.at(-1)?.frame || 20) / fps));
     if (parts.length > 0) {
       parts.forEach((part, idx) => {
         const plane = MeshBuilder.CreatePlane(`sfx_p_${idx}`, { size: 1.9 + idx * 0.45 }, this.scene);
@@ -141,35 +144,21 @@ export class FlyffEffectRuntime {
           mat.opacityTexture = tex;
           mat.useAlphaFromDiffuseTexture = true;
         }
+        tracks.push({ plane, mat, keys: part.keys || [], frames: part.textures, loop: part.textureLoop !== 0 });
         plane.material = mat;
         createdMeshes.push(plane);
         createdMats.push(mat);
       });
     }
 
-    // Always add a crisp ground shockwave ring for immediate combat readability
-    const ring = MeshBuilder.CreateTorus(
-      `sfx_ring_${Date.now()}`,
-      { diameter: 2.3 * baseScale, thickness: 0.14, tessellation: 20 },
-      this.scene,
-    );
-    ring.parent = root;
-    ring.position.y = 0.25;
-    ring.isPickable = false;
-    const ringMat = new StandardMaterial(`sfx_rmat_${Date.now()}`, this.scene);
-    ringMat.emissiveColor = col;
-    ringMat.disableLighting = true;
-    ringMat.alpha = 0.85;
-    ring.material = ringMat;
-    createdMeshes.push(ring);
-    createdMats.push(ringMat);
+    if (!tracks.length) { root.dispose(); return; }
 
     this.activeInstances.push({
       root,
       meshes: createdMeshes,
       mats: createdMats,
       age: 0,
-      duration: 0.7,
+      duration, tracks, fps, target: root.position.clone(), origin: casterPos?.clone(),
     });
   }
 
@@ -178,11 +167,25 @@ export class FlyffEffectRuntime {
       const inst = this.activeInstances[i];
       inst.age += dt;
       const t = Math.min(1, inst.age / inst.duration);
-      const scale = 0.88 + t * 1.15;
-      inst.root.scaling.setAll(scale);
-      inst.root.rotation.y += dt * 4.8;
-      for (const m of inst.mats) {
-        m.alpha = Math.max(0, 0.92 * (1 - t));
+      if (inst.origin) Vector3.LerpToRef(inst.origin, inst.target, Math.min(1, inst.age / 0.18), inst.root.position);
+      const frame = inst.age * inst.fps;
+      for (const track of inst.tracks) {
+        const { keys, frames, plane, mat } = track;
+        const index = keys.findIndex(k => k.frame >= frame);
+        const a = keys[index < 0 ? keys.length - 1 : Math.max(0, index - 1)];
+        const b = index < 0 ? a : keys[index];
+        const u = a && b && b.frame > a.frame ? Math.max(0, (frame - a.frame) / (b.frame - a.frame)) : 0;
+        const mix = (left, right) => left + (right - left) * u;
+        if (a && b) {
+          for (const [i, axis] of ['x', 'y', 'z'].entries()) {
+            plane.position[axis] = mix(a.position?.[i] ?? 0, b.position?.[i] ?? 0);
+            plane.scaling[axis] = mix(a.scale?.[i] ?? 1, b.scale?.[i] ?? 1);
+          }
+          plane.rotation.z = mix(a.rotation?.[2] || 0, b.rotation?.[2] || 0) * Math.PI / 180;
+        }
+        const texIndex = track.loop ? Math.floor(frame) % frames.length : Math.min(frames.length - 1, Math.floor(frame));
+        mat.diffuseTexture = mat.opacityTexture = this.getTexture(frames[texIndex]);
+        mat.alpha = mix(a?.opacity ?? 255, b?.opacity ?? 255) / 255 * Math.min(1, (1 - t) * 5);
       }
       if (t >= 1) {
         for (const mesh of inst.meshes) mesh.dispose(false, false);

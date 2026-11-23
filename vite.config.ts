@@ -1,8 +1,9 @@
-import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import { terrainTextures } from './tools/flyff/terrain-textures.mjs';
+import { terrainTextures } from './tools/world/terrain-textures.mjs';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
@@ -26,6 +27,12 @@ export default defineConfig({
       workbox: {
         maximumFileSizeToCacheInBytes: 25 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json,wav,ogg,glb,f32,u8,wasm}'],
+        manifestTransforms: [async entries => {
+          const urls = [...new Map(entries.filter(e => e.url !== 'offline-files.json').map(e => [e.url, e])).values()];
+          const index = JSON.stringify(urls.map(({ url, revision }) => [url, revision]));
+          writeFileSync(new URL('./dist/offline-files.json', import.meta.url), index);
+          return { manifest: [...urls, { url: 'offline-files.json', revision: createHash('sha256').update(index).digest('hex'), size: Buffer.byteLength(index) }], warnings: [] };
+        }],
         globIgnores: ['assets/aistudio/**'],
         runtimeCaching: [
           {

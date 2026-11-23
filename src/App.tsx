@@ -7,6 +7,7 @@ import {
   getStarterItemsForMuClass,
   getDefaultComboConfig,
 } from './data/muSkillsAndClasses';
+import { ITEM_BY_ID } from './data/itemCatalog';
 import { getMapById } from './data/muWorldData';
 import {
   addItemToCharacter,
@@ -14,6 +15,7 @@ import {
   allocateStatPoint,
   buyJewelFromNpc,
   buyShopItem,
+  addCatalogItem,
   changeAccountPassword,
   createCharacterForAccount,
   equipItem,
@@ -84,7 +86,6 @@ import { soundSynth } from './game/soundSynth';
 import { cloudSyncManager } from './services/cloudSyncManager';
 import { loadAdminConfig } from './services/adminConfigService';
 import { LocalSyncManager } from './services/syncManager';
-import { AdminConfigModal } from './components/AdminConfigModal';
 import { ApkSyncDrawer } from './components/ApkSyncDrawer';
 import { CharacterStatsModal } from './components/CharacterStatsModal';
 import { ClassicLoginFlow } from './components/ClassicLoginFlow';
@@ -166,6 +167,7 @@ export default function App() {
   const [gameSettings, setGameSettings] = useState<GameSettings>(INITIAL_SETTINGS);
   const [buttonLayouts, setButtonLayouts] = useState<Record<HudButtonId, ButtonLayoutItem>>(DEFAULT_BUTTON_LAYOUTS);
   const [comboConfig, setComboConfig] = useState<CharacterComboConfig>(getDefaultComboConfig('DK'));
+  const [helperEnabled, setHelperEnabled] = useState(false);
   const [comboArmed, setComboArmed] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [measuredFps, setMeasuredFps] = useState(60);
@@ -184,7 +186,7 @@ export default function App() {
   );
 
   const [activeDrawer, setActiveDrawer] = useState<
-    'none' | 'inventory' | 'sync' | 'oracle' | 'apk' | 'settings' | 'mapWarp' | 'stats' | 'npc' | 'admin'
+    'none' | 'inventory' | 'sync' | 'oracle' | 'apk' | 'settings' | 'mapWarp' | 'stats' | 'npc'
   >('none');
   const [nearbyNpc, setNearbyNpc] = useState<NpcDef | null>(null);
   const [activeNpc, setActiveNpc] = useState<NpcDef | null>(null);
@@ -271,6 +273,11 @@ export default function App() {
 
   // Unlock Web Audio on first gesture so background music starts smoothly
   useEffect(() => {
+    const visibility = () => soundSynth.setForeground(!document.hidden);
+    const hide = () => soundSynth.setForeground(false);
+    document.addEventListener('visibilitychange', visibility);
+    window.addEventListener('pagehide', hide);
+    window.addEventListener('pageshow', visibility);
     const unlock = () => {
       soundSynth.unlockAudio();
       void engineRef.current?.unlockAudio();
@@ -278,6 +285,9 @@ export default function App() {
     window.addEventListener('pointerdown', unlock, { once: true });
     window.addEventListener('keydown', unlock, { once: true });
     return () => {
+      document.removeEventListener('visibilitychange', visibility);
+      window.removeEventListener('pagehide', hide);
+      window.removeEventListener('pageshow', visibility);
       window.removeEventListener('pointerdown', unlock);
       window.removeEventListener('keydown', unlock);
     };
@@ -398,7 +408,7 @@ export default function App() {
 
     autoStartedRef.current = true;
     const requestedMap = params.get('map') as MapId | null;
-    const targetChar = requestedMap ? { ...character, currentMapId: requestedMap } : character;
+    const targetChar = requestedMap ? { ...character, currentMapId: getMapById(requestedMap).id } : character;
     if (requestedMap) {
       charRef.current = targetChar;
       setCharacter(targetChar);
@@ -835,6 +845,15 @@ export default function App() {
       onPickupLoot: async (drop) => {
         const c = charRef.current;
         if (!c) return;
+        if (drop.kind === 'equipment') {
+          const item = ITEM_BY_ID.get(drop.catalogId || '');
+          if (item) {
+            await addCatalogItem(c, item);
+            if (charRef.current?.id === c.id) setItems(await getItemsForCharacter(c.id));
+            pushBanner('+' + item.name, '#60a5fa');
+          }
+          return;
+        }
         const updated: MuCharacter = {
           ...c,
           zen: c.zen + (drop.kind === 'zen' ? drop.amount : 0),
@@ -1032,7 +1051,7 @@ export default function App() {
     [pushBanner],
   );
 
-  const handlePressAttack = useCallback(() => {
+  const handlePressAttack = useCallback((useCombo = comboArmed) => {
     const c = charRef.current;
     if (!c || screenStageRef.current !== 'playing') return;
     const classSkills = MU_SKILLS[c.classType] || MU_SKILLS.DK;
@@ -1043,7 +1062,7 @@ export default function App() {
       return;
     }
 
-    if (comboArmed) {
+    if (useCombo) {
       if (!engineRef.current?.canStartCombo()) return;
       const selectedIds = comboConfig.comboSkillIds.slice(0, 5);
       const comboSkills: SkillDef[] = [];
@@ -1085,8 +1104,8 @@ export default function App() {
   pressAttackRef.current = handlePressAttack;
 
   useEffect(() => {
-    engineRef.current?.setAutoHuntEnabled(comboArmed);
-  }, [comboArmed]);
+    engineRef.current?.setAutoHuntEnabled(helperEnabled);
+  }, [helperEnabled, screenStage]);
 
   // Global keyboard shortcuts while playing/paused
   useEffect(() => {
@@ -1383,7 +1402,8 @@ export default function App() {
       if (lootFiltersRef.current.autoLootEnabled) {
         engineRef.current?.collectAutoLoot(lootFiltersRef.current);
       }
-      if (comboArmed) {
+      if (document.hidden) return;
+      if (helperEnabled || comboArmed) {
         const c = charRef.current;
         if (c && (c.hp < c.maxHp || c.mp < c.maxMp)) {
           const hpPct = (c.hp / Math.max(1, c.maxHp)) * 100;
@@ -1400,7 +1420,7 @@ export default function App() {
       }
     }, 350);
     return () => window.clearInterval(timer);
-  }, [screenStage, comboArmed, handleHealPotion]);
+  }, [screenStage, comboArmed, helperEnabled, handleHealPotion]);
 
   const handleEquip = async (itemId: string) => {
     if (!character) return;
@@ -1711,6 +1731,8 @@ export default function App() {
           <MuHudOverlay
             character={character}
             comboConfig={comboConfig}
+            helperEnabled={helperEnabled}
+            onToggleHelper={() => setHelperEnabled(v => !v)}
             comboArmed={comboArmed}
             buttonLayouts={buttonLayouts}
             editMode={editMode}
@@ -1732,7 +1754,10 @@ export default function App() {
             onJoystickVector={(x, y) => engineRef.current?.setJoystickVector(x, y)}
             onPressAttack={handlePressAttack}
             onJump={() => engineRef.current?.jump()}
-            onToggleComboArmed={() => setComboArmed((v) => !v)}
+            onToggleComboArmed={() => {
+              setComboArmed(!comboArmed);
+              if (!comboArmed) handlePressAttack(true);
+            }}
             onCastSkill={handleCastSkill}
             onUpdateComboConfig={handleUpdateComboConfig}
             onHealPotion={handleHealPotion}
@@ -1917,21 +1942,10 @@ export default function App() {
         onUpdateSettings={handleUpdateSettings}
         onEnterButtonEditor={() => setEditMode(true)}
         onRequestLandscapeFullscreen={requestLandscapeFullscreen}
-        onOpenAdminConfig={() => setActiveDrawer('admin')}
         onSwitchCharacter={() => {
           setActiveDrawer('none');
           engineRef.current?.setMode('character_select');
           setScreenStage('character_select');
-        }}
-      />
-
-      <AdminConfigModal
-        open={activeDrawer === 'admin'}
-        onClose={() => setActiveDrawer('none')}
-        onApplied={() => {
-          if (character) {
-            void engineRef.current?.loadMap(character.currentMapId, false);
-          }
         }}
       />
 

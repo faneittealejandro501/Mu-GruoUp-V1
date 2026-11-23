@@ -20,16 +20,16 @@ import {
   Vector3,
 } from '@babylonjs/core';
 import '@babylonjs/loaders';
+import { ITEM_BY_ID } from '../data/itemCatalog';
 import { RECIPES } from './content/recipes';
 import { WorldContentManager } from './WorldContent';
 import { getEffectiveSkillMultiplier } from './combatAndProgression';
 import { soundSynth } from './soundSynth';
 import { DEFAULT_CAMERA_DISTANCE, type LootFilterSettings } from './worldPhysicsMath';
-import { BESTIARY, MONSTER_ELEMENTS, SPECIES_BY_ID } from '../data/bestiary';
-import { createCreature } from './OriginalCreature';
+import { BESTIARY, SPECIES_BY_ID } from '../data/bestiary';
 import { creatureFx } from './CreatureEffects';
 import { MU_MAPS, getMapById } from '../data/muWorldData';
-import { getAdminConfigSync, loadAdminConfig, subscribeAdminConfig } from '../services/adminConfigService';
+import { getAdminConfigSync, loadAdminConfig } from '../services/adminConfigService';
 import type {
   EventType,
   FloatingDamageNumber,
@@ -110,6 +110,10 @@ interface ActiveMonster {
   actionTime: number;
   powerCooldown: number;
   originalSpecies?: string;
+  model?: TransformNode;
+  modelPending?: boolean;
+  retryAt?: number;
+  attackFx: string;
   hitCooldown: number;
   respawnTimer: number;
   alive: boolean;
@@ -264,7 +268,6 @@ export class MuWorldEngine {
   private entityContainerCache = new Map<string, AssetContainer>();
   private lootMatCache = new Map<string, StandardMaterial>();
   private weatherParticles: ParticleSystem | null = null;
-  private unsubscribeAdmin: (() => void) | null = null;
   private entityBuildToken = 0;
 
   private lastTargetId: string | null = null;
@@ -274,9 +277,7 @@ export class MuWorldEngine {
   }
 
   private playMonsterSound(mob: ActiveMonster, event: 'atk1' | 'dmg1' | 'die1'): void {
-    const species = mob.originalSpecies && SPECIES_BY_ID.get(mob.originalSpecies);
-    if (species) soundSynth.playCreatureTone(MONSTER_ELEMENTS[species.power.element].hz, event);
-    else soundSynth.playMonsterSound(mob.glbFile, event);
+    soundSynth.playMonsterSound(mob.glbFile, event);
   }
 
   private lastNearbyNpcId: string | null = null;
@@ -342,6 +343,8 @@ export class MuWorldEngine {
       new Vector3(this.heroX, this.heroY + 1.55, this.heroZ),
       this.scene,
     );
+    this.camera.inputs.removeByType('ArcRotateCameraKeyboardMoveInput');
+    this.camera.panningSensibility = 0;
     this.camera.minZ = 0.2;
     this.camera.maxZ = 950;
     this.camera.lowerRadiusLimit = 5;
@@ -355,13 +358,6 @@ export class MuWorldEngine {
     this.flyff = new WorldContentManager(this.scene);
 
     this.applyAdminWorldRules();
-    void loadAdminConfig().then(() => {
-      if (!this.disposed) this.applyAdminWorldRules();
-    });
-    this.unsubscribeAdmin = subscribeAdminConfig(() => {
-      if (!this.disposed) this.applyAdminWorldRules();
-    });
-
     this.onKeyDownBound = (e) => {
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes((document.activeElement?.tagName || '').toUpperCase())) return;
       this.keys.add(e.code);
@@ -378,7 +374,7 @@ export class MuWorldEngine {
     window.addEventListener('resize', this.onResizeBound);
 
     this.engine.runRenderLoop(() => {
-      if (this.disposed) return;
+      if (this.disposed || document.hidden) return;
       const now = performance.now();
       const rawDt = Math.min(0.1, Math.max(0.001, (now - this.lastFrameTime) / 1000));
       if (this.targetFps < 60 && rawDt < 1 / this.targetFps) {
@@ -481,7 +477,9 @@ export class MuWorldEngine {
     resetPose = true,
     savedPose?: { x: number; z: number; rotY?: number },
   ): Promise<void> {
-    this.mapVersion++;
+    const version = ++this.mapVersion;
+    await loadAdminConfig();
+    if (version !== this.mapVersion || this.disposed) return;
     this.comboUntil = 0;
     const map = getMapById(mapId);
     this.currentMap = map;
@@ -502,7 +500,8 @@ export class MuWorldEngine {
       this.heroRotY = Math.PI;
     }
 
-    await this.flyff.world.stream(this.heroX, this.heroZ, 0, 460);
+    await this.flyff.world.stream(this.heroX, this.heroZ, 0, 160);
+    if (version !== this.mapVersion || this.disposed) return;
     this.heroY = this.flyff.world.getGroundHeight(this.heroX, this.heroZ);
     this.heroRoot.position.set(this.heroX, this.heroY, this.heroZ);
     if (this.flyff.actor) {
@@ -592,7 +591,7 @@ export class MuWorldEngine {
   }
 
   private cityRadius(map: MapDef, rules = getAdminConfigSync()['world-rules']): number {
-    const value = Number(rules.maps?.[map.id]?.cityRadius ?? rules.cityRadiusMeters ?? map.cityRadius);
+    const value = Number(rules.maps?.[map.id]?.cityRadius ?? rules.maps?.[map.id.replace('_bruma', '').replace('crater_', '')]?.cityRadius ?? rules.cityRadiusMeters ?? map.cityRadius);
     return Number.isFinite(value) ? Math.max(1, Math.min(500, value)) : 500;
   }
 
@@ -664,7 +663,7 @@ export class MuWorldEngine {
     const slotIdx = Math.max(0, Math.min(5, Number(skill.keyHint || 1) - 1));
     const candidate = hintMap[cls]?.[slotIdx];
     if (candidate && actor.hasClip(candidate)) return candidate;
-    if (skill.isBuff && actor.hasClip('cast_release')) return 'cast_release';
+    if ((skill.isBuff || cls === 'DW' || (cls === 'MG' && slotIdx >= 2)) && actor.hasClip('cast_release')) return 'cast_release';
     return 'attack';
   }
 
@@ -676,9 +675,9 @@ export class MuWorldEngine {
     const skillIndex = Math.max(0, Number(skill.keyHint) - 1);
     const [fxId, soundId] = clsRecipes[skillIndex] || clsRecipes[0];
 
-    this.attackSwingTimer = 0.48;
+
     const clipName = this.resolveHeroSkillClip(skill);
-    this.flyff.actor?.playClip(clipName, false);
+    this.attackSwingTimer = this.flyff.actor?.playClip(clipName, false) || 0.48;
 
     const origin = new Vector3(this.heroX, this.heroY + this.hoverOffset + 0.9, this.heroZ);
     const forward = new Vector3(Math.sin(this.heroRotY), 0, Math.cos(this.heroRotY));
@@ -835,7 +834,7 @@ export class MuWorldEngine {
     if (mob.def.drops?.length !== 0) this.spawnLootDrop(mob.x, mob.z, zen, mob.def.isBoss, mob.def.drops);
   }
 
-  private spawnLootDrop(x: number, z: number, zenAmount: number, isBoss?: boolean, allowed?: LootDropInfo['kind'][]): void {
+  private spawnLootDrop(x: number, z: number, zenAmount: number, isBoss?: boolean, allowed?: string[]): void {
     const roll = Math.random();
     let kind: LootDropInfo['kind'] = 'zen';
     let label = `${zenAmount} Zen`;
@@ -866,10 +865,15 @@ export class MuWorldEngine {
 
     const y = this.flyff.world.getGroundHeight(x, z) + 0.35;
     const id = `loot-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-    if (allowed?.length && !allowed.includes(kind)) {
-      kind = allowed[Math.floor(Math.random() * allowed.length)];
+    let catalogId: string | undefined;
+    if (allowed?.length) {
+      const selected = allowed[Math.floor(Math.random() * allowed.length)];
+      const item = ITEM_BY_ID.get(selected);
+      if (item) {
+        kind = 'equipment'; catalogId = item.id; color = '#60a5fa';
+      } else kind = selected as LootDropInfo['kind'];
       amount = kind === 'zen' ? zenAmount : 1;
-      label = kind === 'zen' ? `${amount} Zen` : kind.toUpperCase();
+      label = item?.name ?? (kind === 'zen' ? `${amount} Zen` : kind.toUpperCase());
     }
 
     const mesh = MeshBuilder.CreatePolyhedron(id, { type: 1, size: 0.32 }, this.scene);
@@ -886,13 +890,22 @@ export class MuWorldEngine {
     mesh.material = mat;
 
     this.loots.push({
-      info: { id, kind, label, amount, x, y, z },
+      info: { id, kind, catalogId, label, amount, x, y, z },
       mesh,
       createdAt: performance.now(),
     });
   }
 
-  private async getOrLoadEntityContainer(relPath: string): Promise<AssetContainer | null> {
+  private pendingModels = new Map<string, Promise<AssetContainer | null>>();
+  private getOrLoadEntityContainer(relPath: string): Promise<AssetContainer | null> {
+    const pending = this.pendingModels.get(relPath);
+    if (pending) return pending;
+    const request = this.loadContainer(relPath).finally(() => this.pendingModels.delete(relPath));
+    this.pendingModels.set(relPath, request);
+    return request;
+  }
+
+  private async loadContainer(relPath: string): Promise<AssetContainer | null> {
     if (this.entityContainerCache.has(relPath)) {
       return this.entityContainerCache.get(relPath)!;
     }
@@ -1058,11 +1071,11 @@ export class MuWorldEngine {
     // 2. Build rich monster pool covering 40+ distinct Flyff GLBs from public/mugroup/monstruos/
     const extraCatalog = Array.isArray(adminCfg.monsters?.extraCatalog) ? adminCfg.monsters.extraCatalog : [];
     const glbOverrides: Record<string, string> = adminCfg.monsters?.glbOverrides || {};
-    type Template = { def: MonsterSpawnDef; glb: string; speciesId?: string };
+    type Template = { def: MonsterSpawnDef; glb: string; speciesId?: string; attackFx?: string };
     const templates: Template[] = [];
-    const naturalTemplates: Template[] = BESTIARY.map((species, i) => {
+    const naturalTemplates: Template[] = BESTIARY.filter(s => s.map === this.currentMap.id).map((species, i) => {
       const level = Math.min(this.currentMap.maxLevel, this.currentMap.minLevel + (i % 12));
-      return { speciesId: species.id, glb: '', def: {
+      return { speciesId: species.id, glb: resolveMonsterGlb(glbOverrides[species.id], i), def: {
         id: species.id, name: species.name, type: 'spider', level, scale: 1,
         colorHex: species.power.colorHex, maxHp: 110 + level * 30,
         attack: 11 + level * 2, defense: level, xpReward: 25 + level * 16,
@@ -1074,12 +1087,12 @@ export class MuWorldEngine {
     for (let i = 0; i < this.currentMap.monsters.length; i++) {
       const t = this.currentMap.monsters[i];
       const key = t.name.toLowerCase().split(' ')[0];
-      const glb = resolveMonsterGlb(glbOverrides[key] || glbOverrides[t.id], i);
+      const glb = resolveMonsterGlb(glbOverrides[t.id] || glbOverrides[key] || 'monstruos/' + key + '.glb', i);
       templates.push({ def: t, glb });
     }
 
     // Add map-aligned extraCatalog entries + rotate through all 43 distinct GLBs so 40+ monster classes exist cleanly
-    const pool = extraCatalog;
+    const pool = extraCatalog.filter((e: any) => !e.map || e.map === mapKey || e.map === this.currentMap.id);
     for (let i = 0; i < pool.length; i++) {
       const e = pool[i];
       const levelScale = Math.max(1, this.currentMap.minLevel);
@@ -1102,21 +1115,44 @@ export class MuWorldEngine {
       };
       templates.push({
         def,
-        glb: resolveMonsterGlb(e.glb, i),
+        glb: resolveMonsterGlb(glbOverrides[e.id] || e.glb, i),
+        attackFx: e.sfx,
       });
     }
 
-    const assetModels = [...new Set(templates.map(t => t.glb).filter(Boolean))];
-    for (let i = 0; i < assetModels.length; i += 5) {
-      await Promise.all(assetModels.slice(i, i + 5).map(g => this.getOrLoadEntityContainer(g)));
-      if (token !== this.entityBuildToken || this.disposed) return;
+    const presentGlbs = new Set(templates.map((t) => t.glb));
+    for (let i = 0; i < AVAILABLE_MONSTER_GLBS.length; i++) {
+      const glb = AVAILABLE_MONSTER_GLBS[i];
+      if (presentGlbs.has(glb)) continue;
+      presentGlbs.add(glb);
+      const base = glb.replace('monstruos/', '').replace('.glb', '');
+      const lvl = this.currentMap.minLevel + (i % Math.max(1, this.currentMap.maxLevel - this.currentMap.minLevel));
+      templates.push({
+        def: {
+          id: `glb_${base}`,
+          name: base.charAt(0).toUpperCase() + base.slice(1),
+          type: 'spider',
+          level: lvl,
+          maxHp: 110 + lvl * 35,
+          attack: 12 + lvl * 2,
+          defense: Math.round(lvl * 0.8),
+          xpReward: 40 + lvl * 14,
+          zenMin: 80 + lvl * 20,
+          zenMax: 160 + lvl * 40,
+          scale: 1.05,
+          colorHex: '#fbbf24',
+        },
+        glb,
+      });
     }
 
     const cityRadius = this.getEffectiveCityRadius();
-    const placements = templates.map((entry, i) => {
+    // Camps let players encounter groups on leaving the city; models are shared and loaded on approach.
+    const placements = Array.from({ length: Math.max(64, templates.length) }, (_, i) => {
+      const entry = templates[i % templates.length];
       for (let attempt = 0; attempt < 40; attempt++) {
         const angle = i * 2.399963 + attempt * 0.49;
-        const dist = cityRadius + 28 + ((i * 47 + attempt * 11) % 350);
+        const dist = cityRadius + 18 + ((i * 47 + attempt * 11) % (i % 3 === 0 ? 65 : 350));
         const x = this.currentMap.spawn.x + Math.cos(angle) * dist;
         const z = this.currentMap.spawn.z + Math.sin(angle) * dist;
         if (x >= 40 && x <= 3032 && z >= 40 && z <= 3032 && !this.isSafePoint(x, z, 10))
@@ -1124,6 +1160,21 @@ export class MuWorldEngine {
       }
       return null;
     }).filter(p => p !== null);
+
+    // Populate the rest of the traversable world, not only the ring around the warp point.
+    // Logical spawns are inexpensive; meshes and animation only run near the player.
+    const limit = Math.max(placements.length, Math.min(1600, Math.floor(Number(
+      adminCfg['world-rules'].maps?.[mapKey]?.targetMonsterCount) || 64)));
+    for (let i = 0; placements.length < limit && i < 1800; i++) {
+      const cx = 45 + 2980 * ((i * 0.754877666) % 1);
+      const cz = 45 + 2980 * ((i * 0.569840296) % 1);
+      if (this.isSafePoint(cx, cz, 23)) continue;
+      const entry = templates[i % templates.length];
+      for (let n = 0; n < (entry.def.isBoss ? 1 : 4) && placements.length < limit; n++) {
+        const angle = i + n * 2.4;
+        placements.push({ entry, mx: cx + n * 3 * Math.cos(angle), mz: cz + n * 3 * Math.sin(angle), angle });
+      }
+    }
 
     const groups = adminCfg.monsters?.groups;
     if (Array.isArray(groups)) for (const group of groups.slice(0, 40)) {
@@ -1141,7 +1192,7 @@ export class MuWorldEngine {
         roamRadius: number(group.roamRadius, 40, 0, 200),
         respawnSeconds: number(group.respawnSeconds, 7, 1, 3600),
         drops: Array.isArray(group.drops) ? group.drops.filter((key: string) =>
-          ['zen', 'bless', 'soul', 'life', 'chaos', 'creation', 'talisman'].includes(key)) : undefined,
+          ['zen', 'bless', 'soul', 'life', 'chaos', 'creation', 'talisman'].includes(key) || ITEM_BY_ID.has(key)) : undefined,
       };
       const count = Math.round(number(group.count, 1, 1, 16));
       for (let n = 0; n < count; n++) {
@@ -1158,21 +1209,7 @@ export class MuWorldEngine {
       const glb = entry.glb;
       const my = this.flyff.world.getGroundHeight(mx, mz);
 
-      const targetHeight = template.isBoss ? 3.2 : 1.75 * (template.scale || 1.0);
-      const container = this.entityContainerCache.get(glb);
-      let root: TransformNode;
-      let animations: AnimationGroup[] = [];
-      if (entry.speciesId) {
-        root = new TransformNode(`mob_${i}`, this.scene);
-        createCreature(this.scene, entry.speciesId).parent = root;
-      } else if (container) {
-        const built = this.instantiateNormalizedModel(container, `mob_${this.currentMap.id}_${i}`, targetHeight);
-        root = built.root;
-        animations = built.animations;
-      } else {
-        root = new TransformNode(`mob_${this.currentMap.id}_${i}_root`, this.scene);
-      }
-
+      const root = new TransformNode(`mob_${this.currentMap.id}_${i}`, this.scene);
       root.position.set(mx, my, mz);
       root.rotation.y = angle;
 
@@ -1180,6 +1217,7 @@ export class MuWorldEngine {
         id: `mob-${this.currentMap.id}-${i}`,
         def: template,
         glbFile: glb,
+        attackFx: entry.attackFx || (template.isBoss ? 'sfx_sklmerfury01' : 'sfx_hitsword01'),
         scaledLevel: template.level,
         maxHp: template.maxHp,
         hp: template.maxHp,
@@ -1191,7 +1229,7 @@ export class MuWorldEngine {
         homeZ: mz,
         rotY: angle,
         root,
-        animations,
+        animations: [],
         activeAnim: '',
         hitCooldown: 1.5,
         respawnTimer: 0,
@@ -1264,9 +1302,11 @@ export class MuWorldEngine {
 
     if (moving) {
       const speedMult = (1 + this.activeBonuses.speedBonusPct / 100) * wingSpeedMult;
-      const speed = baseSpeed * speedMult;
-      const nx = moveX / len;
-      const nz = moveZ / len;
+      const speed = baseSpeed * speedMult * Math.min(1, len);
+      // ArcRotate alpha points from target to camera. Project screen right/up onto the ground.
+      const a = this.camera.alpha;
+      const nx = (-Math.sin(a) * moveX - Math.cos(a) * moveZ) / len;
+      const nz = (Math.cos(a) * moveX - Math.sin(a) * moveZ) / len;
       const nextX = Math.max(20, Math.min(3052, this.heroX + nx * speed * dt));
       const nextZ = Math.max(20, Math.min(3052, this.heroZ + nz * speed * dt));
 
@@ -1283,7 +1323,7 @@ export class MuWorldEngine {
         this.heroX = nextX;
         this.heroZ = nextZ;
       }
-      this.heroRotY = Math.atan2(nx, nz);
+      if (this.attackSwingTimer <= 0) this.heroRotY = Math.atan2(nx, nz);
       if (this.flyff.actor) {
         this.flyff.actor.root.rotation.y = this.heroRotY;
       }
@@ -1316,13 +1356,24 @@ export class MuWorldEngine {
     // 3rd-person camera angled above wings to see the horizon clearly ahead
     this.camera.target.set(this.heroX, this.heroY + this.hoverOffset + 1.55, this.heroZ);
 
+    // Keep the camera above rising ground behind the character, including while orbiting.
+    let maxBeta = 1.44;
+    const reach = Math.max(1, this.camera.radius) * Math.sin(this.camera.beta);
+    for (let i = 1; i <= 5; i++) {
+      const distance = reach * i / 5;
+      const terrain = this.flyff.world.getGroundHeight(this.heroX + Math.cos(this.camera.alpha) * distance,
+        this.heroZ + Math.sin(this.camera.alpha) * distance);
+      const rise = terrain + 0.45 - this.camera.target.y;
+      if (rise > 0) maxBeta = Math.min(maxBeta, Math.atan2(distance, rise));
+    }
+    this.camera.upperBetaLimit = Math.max(0.35, maxBeta);
     if (this.attackSwingTimer > 0) {
       this.attackSwingTimer = Math.max(0, this.attackSwingTimer - dt);
     } else if (this.flyff.actor) {
       if (!this.isGrounded) {
         this.flyff.actor.playClip(this.heroVelY > 0 ? 'jump_rise' : 'jump_fall', true);
       } else {
-        this.flyff.actor.playClip(moving ? 'run' : 'idle', true);
+        this.flyff.actor.playClip(moving ? (len < 0.5 ? 'walk' : 'run') : 'idle', true);
       }
     }
 
@@ -1330,10 +1381,10 @@ export class MuWorldEngine {
     this.flyff.update(dt, this.heroY, wingMode, this.heroX, this.heroZ);
 
     this.streamAccum += dt;
-    if (this.streamAccum >= 0.5 && !this.streamingDetails && moving) {
+    if (this.streamAccum >= 0.25 && !this.streamingDetails && (moving || this.streamAccum > 2)) {
       this.streamAccum = 0;
       this.streamingDetails = true;
-      void this.flyff.world.stream(this.heroX, this.heroZ, 0, 460)
+      void this.flyff.world.stream(this.heroX, this.heroZ, 0, 210)
         .catch((error: unknown) => console.warn('No se pudo cargar el terreno cercano', error))
         .finally(() => { this.streamingDetails = false; });
     }
@@ -1373,6 +1424,7 @@ export class MuWorldEngine {
       mob.actionTime = Math.max(0, mob.actionTime - dt);
       mob.powerCooldown = Math.max(0, mob.powerCooldown - dt);
       if (!mob.alive) {
+        if (mob.model && !mob.animations.length) mob.model.rotation.z = (1 - mob.actionTime / 0.25) * Math.PI / 2;
         if (mob.actionTime <= 0) mob.root.setEnabled(false);
         mob.respawnTimer -= dt;
         if (mob.respawnTimer <= 0) {
@@ -1387,8 +1439,28 @@ export class MuWorldEngine {
       }
 
       const d = Math.hypot(this.heroX - mob.x, this.heroZ - mob.z);
-      mob.root.setEnabled(d <= 100);
-      if (d > 100) continue;
+      const radius = this.flyff.world.detailRadius;
+      if (d > radius + 80 && mob.model) {
+        for (const group of mob.animations) group.dispose();
+        mob.animations = [];
+        mob.model.dispose();
+        mob.model = undefined;
+      }
+      if (d <= radius + 30 && !mob.model && !mob.modelPending && !(performance.now() < (mob.retryAt || 0))) {
+        mob.modelPending = true;
+        void this.getOrLoadEntityContainer(mob.glbFile).then(container => {
+          if (this.disposed || mob.root.isDisposed()) return;
+          if (!container) { mob.retryAt = performance.now() + 10000; return; }
+          const built = this.instantiateNormalizedModel(container, mob.id, mob.def.isBoss ? 3.2 : 1.75 * (mob.def.scale || 1));
+          mob.model = built.root;
+          mob.model.parent = mob.root;
+          mob.animations = built.animations;
+          mob.activeAnim = '';
+          this.playMonsterAnim(mob, 'stand');
+        }).finally(() => { mob.modelPending = false; });
+      }
+      if (mob.root.isEnabled() !== (d <= radius)) mob.root.setEnabled(d <= radius);
+      if (!mob.model || d > radius) continue;
       const homeDist = Math.hypot(mob.homeX - mob.x, mob.homeZ - mob.z);
       if (!safeCity && d < aggroRadius && d > 2.4 && homeDist < (mob.def.roamRadius ?? 40)) {
         const dirX = (this.heroX - mob.x) / d;
@@ -1421,13 +1493,12 @@ export class MuWorldEngine {
       const my = this.flyff.world.getGroundHeight(mob.x, mob.z);
       mob.root.position.set(mob.x, my, mob.z);
 
-      if (mob.originalSpecies) {
-        const mesh = mob.root.getChildMeshes()[0];
-        if (mesh) {
-          const phase = this.flyff.worldClock;
-          mesh.position.y = Math.sin(phase * (mob.activeAnim === 'walk' ? 9 : 3)) * (mob.activeAnim === 'walk' ? 0.12 : 0.04);
-          mesh.rotation.x = mob.actionTime > 0 ? Math.sin(mob.actionTime * 5) * 0.25 : 0;
-        }
+      if (mob.model && !mob.animations.length) {
+        const stride = Math.sin(this.flyff.worldClock * 9 + mob.homeX);
+        const swing = mob.activeAnim === 'atk1' ? Math.sin(Math.PI * mob.actionTime / 0.6) : 0;
+        mob.model.position.set(0, mob.activeAnim === 'walk' ? Math.abs(stride) * 0.13 : 0, 0.55 * swing);
+        mob.model.rotation.x = mob.activeAnim === 'hit' ? -mob.actionTime : swing * 0.36;
+        mob.model.rotation.z = mob.activeAnim === 'walk' ? stride * 0.08 : 0;
       }
 
       const species = mob.originalSpecies && SPECIES_BY_ID.get(mob.originalSpecies);
@@ -1441,6 +1512,9 @@ export class MuWorldEngine {
 
           const isCrit = Math.random() < 0.12;
           const power = special ?? (Math.random() < 0.25 && !species ? mob.def.powers?.[0] : undefined);
+          if (!special) {
+            void this.flyff.fx.play(mob.attackFx, new Vector3(this.heroX, this.heroY + 0.7, this.heroZ), power ? 1.35 : 0.8, { colorHex: power?.colorHex || mob.def.colorHex });
+          }
           if (special) {
             mob.powerCooldown = special.cooldownSec;
             const fx = creatureFx(this.scene, this.creatureEffectsRoot,
@@ -1554,7 +1628,7 @@ export class MuWorldEngine {
       sizeMeters: this.currentMap.worldSize || 3072,
       hero: { x: this.heroX, z: this.heroZ },
       monsters: this.monsters
-        .filter((m) => m.alive)
+        .filter((m) => m.alive && Math.hypot(m.x - this.heroX, m.z - this.heroZ) <= 550)
         .map((m) => ({ id: m.id, x: m.x, z: m.z, isBoss: m.def.isBoss })),
       npcs: this.npcs.map((n) => ({ id: n.def.id, name: n.def.name, x: n.def.x, z: n.def.z })),
       friends: Array.from(this.remotePeers.values()).map((r) => ({
@@ -1569,8 +1643,6 @@ export class MuWorldEngine {
   public dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    this.unsubscribeAdmin?.();
-    this.unsubscribeAdmin = null;
     window.removeEventListener('keydown', this.onKeyDownBound);
     window.removeEventListener('keyup', this.onKeyUpBound);
     window.removeEventListener('resize', this.onResizeBound);

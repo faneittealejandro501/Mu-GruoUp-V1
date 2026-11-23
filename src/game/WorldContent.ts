@@ -90,7 +90,7 @@ export interface LoadedTileState {
 
 // The source uses abbreviations (Tr/Ro/Gr) as well as full names. Keep
 // identified natural models; unknown placements can be inspected in the source manifest.
-const NATURAL_MODEL = /(?:tree|plant|root|rock|boulder|mountain|bone|obj_ma(?:copr(?:tr|ro|gr|fl)|flprtr|saprro)\d)/i;
+const NATURAL_MODEL = /(?:tree|plant|root|rock|boulder|mountain|grass|flower|shrub|bush|obj_ma(?:copr(?:tr|ro|gr(?:ge)?|fl)|flprtr|saprro)\d)/i;
 
 let cachedPersonajes: PersonajeConfig[] | null = null;
 export async function loadPersonajesManifest(): Promise<PersonajeConfig[]> {
@@ -125,7 +125,7 @@ export class FlyffActor {
   public wingParticles: ParticleSystem | null = null;
   public enhanceParticles: ParticleSystem[] = [];
   public wingScaleMultiplier = 1;
-  private activeClip = 'idle';
+  private activeClip = '';
   private wingMode: 'stand' | 'walk' | '' = '';
 
   constructor(scene: Scene, config: PersonajeConfig) {
@@ -220,8 +220,8 @@ export class FlyffActor {
     return this.outfit.animations.some((a) => a.name.toLowerCase() === lower);
   }
 
-  public playClip(name: string, loop = true): void {
-    if (this.activeClip === name && loop) return;
+  public playClip(name: string, loop = true): number {
+    if (this.activeClip === name && loop) return 0;
     const lower = name.toLowerCase();
     const group =
       this.outfit.animations.find((a) => a.name === name) ||
@@ -229,7 +229,7 @@ export class FlyffActor {
       this.outfit.animations.find((a) => a.name.toLowerCase().includes(lower)) ||
       (loop ? this.outfit.animations.find((a) => a.name === 'idle') : this.outfit.animations.find((a) => a.name === 'attack')) ||
       this.outfit.animations[0];
-    if (!group) return;
+    if (!group) return 0;
     for (const a of this.outfit.animations) {
       if (a !== group && a.isPlaying) a.stop();
     }
@@ -240,8 +240,10 @@ export class FlyffActor {
       }
       group.start(loop, !loop ? 1.18 : 1.0, group.from, group.to, false);
     } catch {
-      // ignore in NullEngine if empty frames
+      return 0;
     }
+    const fps = group.targetedAnimations[0]?.animation.framePerSecond || 30;
+    return Math.max(0.16, (group.to - group.from) / (fps * (loop ? 1 : 1.18)));
   }
 
   public playWingAnimation(mode: 'stand' | 'walk'): void {
@@ -538,7 +540,7 @@ export class FlyffWorldStreamer {
         }
         await this.rebuildCollision();
       }
-      this.updateDetailVisibility(x, z);
+      this.updateDetailVisibility(this.lastHeroX, this.lastHeroZ);
     };
 
     this.streamingLock = run().finally(() => {
@@ -600,6 +602,14 @@ export class FlyffWorldStreamer {
           wPlane.isPickable = false;
           waterMeshes.push(wPlane);
         }
+        if (waterMeshes.length > 1) {
+          const surface = Mesh.MergeMeshes(waterMeshes, true, true);
+          if (surface) {
+            surface.parent = root;
+            surface.isPickable = false;
+            waterMeshes.splice(0, waterMeshes.length, surface);
+          }
+        }
       }
     }
 
@@ -615,7 +625,8 @@ export class FlyffWorldStreamer {
   }
 
   private async updateTileDetails(tile: LoadedTileState, manifest: MundoManifest, x: number, z: number): Promise<boolean> {
-    const keep = this.detailRadius + 18;
+    const preload = this.detailRadius + 24;
+    const keep = preload + 20;
     const allowed = (obj: MundoObjectEntry) => !this.stripManmadeStructures || NATURAL_MODEL.test(obj.model);
     let changed = false;
     for (const [index, node] of tile.details) {
@@ -629,7 +640,7 @@ export class FlyffWorldStreamer {
 
     for (const [index, obj] of tile.def.objects.entries()) {
       if (this.scene.isDisposed) break;
-      if (tile.details.has(index) || !allowed(obj) || Math.hypot(obj.x - x, obj.z - z) > this.detailRadius) continue;
+      if (tile.details.has(index) || !allowed(obj) || Math.hypot(obj.x - x, obj.z - z) > preload) continue;
       let container = this.containers.get(obj.model);
       if (!container) {
         const file = manifest.models[obj.model]?.file;
@@ -657,6 +668,7 @@ export class FlyffWorldStreamer {
       for (const child of inst.rootNodes) child.parent = root;
       for (const group of inst.animationGroups) group.dispose();
       for (const skeleton of inst.skeletons) skeleton.dispose();
+      root.setEnabled(Math.hypot(obj.x - this.lastHeroX, obj.z - this.lastHeroZ) <= this.detailRadius);
       tile.details.set(index, root);
       changed = true;
     }

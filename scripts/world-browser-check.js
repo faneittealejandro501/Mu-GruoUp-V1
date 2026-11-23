@@ -1,6 +1,6 @@
 // CodeRabbit-generated regression checks for the native equipment and streaming adapter.
 // Use a synthetic account and the DEV ?headless=1 entry; this changes the current preview actor/map.
-// coderabbit-agent-browser eval --stdin < scripts/flyff-browser-check.js
+// coderabbit-agent-browser eval --stdin < scripts/world-browser-check.js
 (async()=>{
  if(!window.__muEngine)throw Error('Open the DEV headless entry before running this check.');
  const result={};

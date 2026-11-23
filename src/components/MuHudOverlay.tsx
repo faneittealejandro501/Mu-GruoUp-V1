@@ -62,6 +62,8 @@ interface MuHudOverlayProps {
   character: MuCharacter;
   comboConfig: CharacterComboConfig;
   comboArmed: boolean;
+  helperEnabled: boolean;
+  onToggleHelper: () => void;
   buttonLayouts: Record<HudButtonId, ButtonLayoutItem>;
   editMode: boolean;
   measuredFps: number;
@@ -100,6 +102,7 @@ interface MuHudOverlayProps {
 }
 
 const LOOT_FILTER_OPTIONS: Array<{ key: LootFilterKey; label: string; colorClass: string }> = [
+  { key: 'equipment', label: 'Equipo', colorClass: 'text-sky-300' },
   { key: 'zen', label: 'Zen', colorClass: 'text-amber-300' },
   { key: 'life', label: 'Life', colorClass: 'text-purple-300' },
   { key: 'soul', label: 'Soul', colorClass: 'text-sky-300' },
@@ -113,6 +116,8 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
   character,
   comboConfig,
   comboArmed,
+  helperEnabled,
+  onToggleHelper,
   buttonLayouts,
   editMode,
   measuredFps,
@@ -1066,6 +1071,11 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
         </div>,
       )}
 
+      {wrapButton('helper', <button type="button" data-testid="hud-helper-btn" aria-pressed={helperEnabled}
+        onClick={() => !editMode && onToggleHelper()}
+        className={`px-3 py-2 rounded-xl border text-xs font-bold ${helperEnabled ? 'border-amber-200 bg-amber-800' : 'border-slate-500 bg-slate-900'}`}>
+        Hellpe · {helperEnabled ? 'ON' : 'OFF'}
+      </button>)}
       {/* COMBO x5 TOGGLE BUTTON (Tap once to arm/disarm 5-power combo for Attack button) */}
       {wrapButton(
         'combo',
@@ -1091,7 +1101,7 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
             {comboArmed ? 'COMBO ON' : 'COMBO'}
           </span>
           <span className="text-[8px] font-mono-tabular text-amber-200/90 pointer-events-none">
-            {comboArmed ? 'Auto+Cura' : `${comboConfig.comboSkillIds.slice(0, 5).length}/5`}
+            {comboArmed ? 'x5 + Cura' : `${comboConfig.comboSkillIds.slice(0, 5).length}/5`}
           </span>
         </button>,
       )}

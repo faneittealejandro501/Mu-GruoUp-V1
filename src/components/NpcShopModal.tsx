@@ -1,8 +1,8 @@
-import { ARTISAN_CATALOG } from '../data/artisanEquipment';
+import { ITEM_CATALOG } from '../data/itemCatalog';
 import { getAdminConfigSync } from '../services/adminConfigService';
 import React, { useState } from 'react';
 import { Flame, Gem, ShoppingBag, Sparkles, X } from 'lucide-react';
-import { MU_CHAOS_WINGS_RECIPES, MU_SHOP_CATALOG } from '../data/muWorldData';
+import { MU_CHAOS_WINGS_RECIPES } from '../data/muWorldData';
 import type { MuCharacter, MuItem, NpcDef, ShopItemDef } from '../types/game';
 
 interface NpcShopModalProps {
@@ -39,7 +39,7 @@ export const NpcShopModal: React.FC<NpcShopModalProps> = ({
   const isChaosNpc = npc.role === 'chaos_goblin';
   const priceMultiplier = Number(getAdminConfigSync().items.priceMultiplier);
   const customStock = npc.stock;
-  const catalogForNpc = [...MU_SHOP_CATALOG, ...ARTISAN_CATALOG]
+  const catalogForNpc = ITEM_CATALOG
     .filter(item => {
       if (item.classFilter && !item.classFilter.includes(character.classType)) return false;
       if (customStock) return Object.hasOwn(customStock, item.id) &&

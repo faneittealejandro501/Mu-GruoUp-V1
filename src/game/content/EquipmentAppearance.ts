@@ -345,7 +345,7 @@ export class EquipmentAppearance {
     const artisan = artisanWeapon(weaponItem?.name);
     const offhandFile = offhandItem ? lib.weapons?.[offhandItem.name] : undefined;
     const wingFile = wingItem
-      ? lib.wings?.[wingItem.name] ?? (wingItem.name === AURORA_WING_NAME ? 'equipo/wing_flyff_feather.glb' : undefined)
+      ? lib.wings?.[wingItem.name] ?? getAdminConfigSync().items.wingCatalog?.find((w: { name: string }) => w.name === wingItem.name)?.glb ?? (wingItem.name === AURORA_WING_NAME ? 'equipo/wing_mugroup_feather.glb' : undefined)
       : undefined;
 
     const loadContainer = async (rel: string): Promise<AssetContainer | null> => {
@@ -388,7 +388,7 @@ export class EquipmentAppearance {
     const rightSocket = findNode('socket_rightHand') || findNode('Bip02 R Hand') || outfitRoot;
     const shieldSocket = findNode('socket_shield') || findNode('socket_leftHand') || findNode('Bip02 L ForeArm') || outfitRoot;
     const leftSocket = findNode('socket_leftHand') || shieldSocket;
-    const spineNode = findNode('Bip02 Spine1') || findNode('Bip02 Spine') || outfitRoot;
+    const spineNode = findNode('Bip02 Spine2') || findNode('Bip02 Spine1') || findNode('Bip02 Spine') || outfitRoot;
 
     // Disable native equipment slots first (keep head/hair)
     for (const m of actor.outfit.meshes) {
@@ -645,7 +645,7 @@ export class EquipmentAppearance {
       // Calibrate spine bone rotation back into actor upright rest pose
       actor.root.computeWorldMatrix(true);
       let invSpineToActorRot = Quaternion.Identity();
-      let localBackOffset = new Vector3(0, 0.14, -0.11);
+      let localBackOffset = new Vector3(0, 0, -0.11);
       if (spineNode instanceof TransformNode || spineNode instanceof AbstractMesh) {
         spineNode.computeWorldMatrix(true);
         const spineWorld = spineNode.getWorldMatrix();
@@ -671,15 +671,15 @@ export class EquipmentAppearance {
       let modelOffset = new Vector3(0, 0.12, -0.06);
       let rawAnimatedSpan = 1.5;
 
-      if (baseName.startsWith('wing_flyff_feather')) {
+      if (baseName.startsWith('wing_mugroup_feather')) {
         alignRot = new Vector3(0, 0, 0);
         modelOffset = new Vector3(0, 0.12, -0.06);
         rawAnimatedSpan = 1.27;
-      } else if (baseName.startsWith('wing_flyff_angel')) {
+      } else if (baseName.startsWith('wing_mugroup_angel')) {
         alignRot = new Vector3(0, 0, 0);
         modelOffset = new Vector3(0, 0.08, -0.04);
         rawAnimatedSpan = 3.57;
-      } else if (baseName.startsWith('wing_flyff_prophet')) {
+      } else if (baseName.startsWith('wing_mugroup_prophet')) {
         alignRot = new Vector3(0, 0, 0);
         modelOffset = new Vector3(0, -2.55, -0.72);
         rawAnimatedSpan = 4.27;

@@ -7,6 +7,7 @@ import {
 } from '../data/muSkillsAndClasses';
 import {
   MU_CHAOS_WINGS_RECIPES,
+  displayItemName,
   getMapById,
 } from '../data/muWorldData';
 import {
@@ -202,7 +203,7 @@ export function normalizeCharacterRecord(c: MuCharacter): MuCharacter {
     creation: Math.max(0, Number(c.creation) || 0),
     talisman: Math.max(0, Number(c.talisman) || 0),
     kills: Math.max(0, Number(c.kills) || 0),
-    currentMapId: c.currentMapId || 'flaris',
+    currentMapId: getMapById(c.currentMapId).id,
     updatedAt: Number(c.updatedAt) || Date.now(),
     isSynced: Boolean(c.isSynced),
   };
@@ -519,7 +520,7 @@ async function touchCharacterWithItems(charId: string): Promise<MuCharacter | nu
 
 export async function getItemsForCharacter(charId: string): Promise<MuItem[]> {
   await initDexie();
-  return db.items.where('charId').equals(charId).toArray();
+  return (await db.items.where('charId').equals(charId).toArray()).map(item => ({ ...item, name: displayItemName(item.name) }));
 }
 
 export async function addItemToCharacter(charId: string, item: MuItem): Promise<MuItem[]> {
@@ -712,22 +713,10 @@ export async function upgradeItemWithJewel(
   return { success, character: updatedChar, items: nextItems, message };
 }
 
-export async function buyShopItem(
-  character: MuCharacter,
-  shopItem: ShopItemDef,
-): Promise<{ ok: boolean; character: MuCharacter; items: MuItem[]; message: string }> {
+export async function addCatalogItem(character: MuCharacter, shopItem: ShopItemDef): Promise<void> {
   await initDexie();
-  if (character.zen < shopItem.zenCost) {
-    return {
-      ok: false,
-      character,
-      items: await getItemsForCharacter(character.id),
-      message: `Necesitas ${shopItem.zenCost.toLocaleString()} Zen para comprar ${shopItem.name}.`,
-    };
-  }
-
   const newItem: MuItem = {
-    id: `shop-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    id: `item-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
     charId: character.id,
     name: shopItem.name,
     slot: shopItem.slot,
@@ -748,6 +737,23 @@ export async function buyShopItem(
   };
 
   await db.items.put(newItem);
+}
+
+export async function buyShopItem(
+  character: MuCharacter,
+  shopItem: ShopItemDef,
+): Promise<{ ok: boolean; character: MuCharacter; items: MuItem[]; message: string }> {
+  await initDexie();
+  if (character.zen < shopItem.zenCost) {
+    return {
+      ok: false,
+      character,
+      items: await getItemsForCharacter(character.id),
+      message: `Necesitas ${shopItem.zenCost.toLocaleString()} Zen para comprar ${shopItem.name}.`,
+    };
+  }
+
+  await addCatalogItem(character, shopItem);
   const updatedChar = await updateCharacter({
     ...character,
     zen: character.zen - shopItem.zenCost,

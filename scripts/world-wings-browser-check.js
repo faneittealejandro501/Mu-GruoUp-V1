@@ -1,5 +1,5 @@
 // Open the DEV Preview with ?headless=1, then run:
-// coderabbit-agent-browser eval --stdin < scripts/flyff-wings-browser-check.js
+// coderabbit-agent-browser eval --stdin < scripts/world-wings-browser-check.js
 (async () => {
   const engine = window.__muEngine;
   if (!engine) throw Error('Engine unavailable');

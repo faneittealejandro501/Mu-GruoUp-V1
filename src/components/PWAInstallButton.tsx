@@ -1,9 +1,28 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import { Download, Smartphone, WifiOff } from 'lucide-react';
 
+import { offlineInstallReady } from '../services/offlineInstall';
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
+let pendingPrompt: BeforeInstallPromptEvent | null = null;
+const listeners = new Set<() => void>();
+function setPrompt(prompt: BeforeInstallPromptEvent | null) {
+  pendingPrompt = prompt;
+  listeners.forEach(fn => fn());
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', event => {
+    event.preventDefault();
+    setPrompt(event as BeforeInstallPromptEvent);
+  });
+  window.addEventListener('appinstalled', () => setPrompt(null));
+}
+function subscribe(fn: () => void) {
+  listeners.add(fn);
+  return () => { listeners.delete(fn); };
 }
 
 interface PWAInstallButtonProps {
@@ -11,8 +30,20 @@ interface PWAInstallButtonProps {
 }
 
 export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ onOpenApkCenter }) => {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const deferredPrompt = useSyncExternalStore(subscribe, () => pendingPrompt);
   const [isInstalled, setIsInstalled] = useState(false);
+
+  const [offlineReady, setOfflineReady] = useState(false);
+  useEffect(() => {
+    let mounted = true;
+    const verify = () => { void offlineInstallReady().then(ok => { if (mounted) setOfflineReady(ok); }).catch(() => {}); };
+    verify();
+    if ('serviceWorker' in navigator) {
+      void navigator.serviceWorker.ready.then(() => { if (mounted) verify(); });
+      navigator.serviceWorker.addEventListener('controllerchange', verify);
+    }
+    return () => { mounted = false; navigator.serviceWorker?.removeEventListener('controllerchange', verify); };
+  }, []);
 
   useEffect(() => {
     const checkStandalone = () => {
@@ -23,30 +54,18 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ onOpenApkCen
     };
     checkStandalone();
 
-    const onBeforeInstall = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
-    };
-    const onAppInstalled = () => {
-      setDeferredPrompt(null);
-      setIsInstalled(true);
-    };
-
-    window.addEventListener('beforeinstallprompt', onBeforeInstall);
+    const onAppInstalled = () => setIsInstalled(true);
     window.addEventListener('appinstalled', onAppInstalled);
     return () => {
-      window.removeEventListener('beforeinstallprompt', onBeforeInstall);
       window.removeEventListener('appinstalled', onAppInstalled);
     };
   }, []);
 
   const handleClick = async () => {
-    if (deferredPrompt) {
-      await deferredPrompt.prompt();
-      const choice = await deferredPrompt.userChoice;
-      if (choice.outcome === 'accepted') {
-        setDeferredPrompt(null);
-      }
+    if (deferredPrompt && offlineReady) {
+      void navigator.storage?.persist?.().catch(() => {});
+      setPrompt(null);
+      try { await deferredPrompt.prompt(); } catch { onOpenApkCenter?.(); }
       return;
     }
     if (onOpenApkCenter) {
@@ -61,11 +80,12 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ onOpenApkCen
   return (
     <button
       type="button"
+      disabled={!onOpenApkCenter && (!deferredPrompt || !offlineReady)}
       onClick={handleClick}
       className="min-h-[38px] px-3 rounded-lg bg-[#162033] hover:bg-slate-700 border border-amber-500/50 text-amber-200 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
     >
       {deferredPrompt ? <Download className="w-3.5 h-3.5 text-emerald-400" /> : <Smartphone className="w-3.5 h-3.5 text-amber-400" />}
-      {deferredPrompt ? 'Instalar PWA' : 'APK / PWA'}
+      {offlineReady && deferredPrompt ? 'Instalar para jugar sin conexión' : onOpenApkCenter ? 'APKweb · Descarga' : offlineReady ? 'Cliente guardado' : 'Preparando cliente sin conexión…'}
     </button>
   );
 };

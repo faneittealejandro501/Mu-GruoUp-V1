@@ -31,7 +31,7 @@ export const MapWarpModal: React.FC<MapWarpModalProps> = ({
                 Teletransporte · 4 Mundos de Madrigal (9,44 km²)
               </h2>
               <p className="text-[11px] text-slate-400 font-mono-tabular">
-                Nivel actual: {character.level}/99 (Resets: {character.resets}) · Zen disponible: {character.zen.toLocaleString()} · Ciudades seguras y 18 zonas de caza por mapa
+                Nivel actual: {character.level}/99 (Resets: {character.resets}) · Zen disponible: {character.zen.toLocaleString()}
               </p>
             </div>
           </div>
@@ -79,10 +79,10 @@ export const MapWarpModal: React.FC<MapWarpModalProps> = ({
                 <div className="flex items-center justify-between text-[11px] font-mono-tabular text-slate-300 bg-[#0b1019] rounded-lg px-2.5 py-1.5 border border-slate-800/80">
                   <span className="inline-flex items-center gap-1 text-emerald-300">
                     <Shield className="w-3 h-3" />
-                    Ciudad segura {m.cityRadius * 2}m
+                    Radio seguro {m.cityRadius} m
                   </span>
                   <span className="text-amber-200">
-                    18 campamentos (3m) + caza
+                    Caza fuera de la capital
                   </span>
                 </div>
 

@@ -1,5 +1,6 @@
 {
   "version": "2.0.0",
+  "byItem": {},
   "maxEnhanceLevel": 15,
   "enhanceStatPerLevelPct": 8,
   "wingLightEnabled": true,

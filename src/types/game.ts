@@ -47,6 +47,7 @@ export type TransportMode = 'wifi' | 'bluetooth';
 export type EventType = 'blood_castle' | 'chaos_castle' | 'kundun_boss' | 'free_trade';
 
 export type HudButtonId =
+  | 'helper'
   | 'joystick'
   | 'attack'
   | 'jump'
@@ -191,7 +192,7 @@ export interface MonsterSpawnDef {
   powers?: MonsterPower[];
   roamRadius?: number;
   respawnSeconds?: number;
-  drops?: LootDropInfo['kind'][];
+  drops?: string[];
 }
 
 export interface NpcDef {
@@ -419,7 +420,8 @@ export interface AsyncDuelRecord {
 
 export interface LootDropInfo {
   id: string;
-  kind: 'zen' | 'bless' | 'soul' | 'chaos' | 'life' | 'creation' | 'talisman';
+  kind: 'zen' | 'bless' | 'soul' | 'chaos' | 'life' | 'creation' | 'talisman' | 'equipment';
+  catalogId?: string;
   label: string;
   amount: number;
   x: number;

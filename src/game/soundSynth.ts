@@ -6,7 +6,18 @@ class MuSoundSynth {
   private musicStep = 0;
   private soundMapPromise: Promise<Record<string, string>> | null = null;
   private soundMap: Record<string, string> | null = null;
-  private activeSfxCount = 0;
+  private foreground = typeof document === 'undefined' || !document.hidden;
+  private playingSfx = new Set<HTMLAudioElement>();
+
+  public setForeground(active: boolean) {
+    this.foreground = active;
+    if (!active) {
+      for (const audio of this.playingSfx) audio.pause();
+      this.playingSfx.clear();
+      void this.ctx?.suspend().catch(() => {});
+    }
+    this.syncMusicElement();
+  }
   private monsterSfxThrottle = new Map<string, number>();
 
   public volume = 0.75;
@@ -15,7 +26,7 @@ class MuSoundSynth {
   public musicVolume = 0.45;
 
   private ensureContext(): AudioContext | null {
-    if (typeof window === 'undefined') return null;
+    if (!this.foreground || typeof window === 'undefined') return null;
     if (!this.ctx) {
       const AC =
         window.AudioContext ||
@@ -52,16 +63,16 @@ class MuSoundSynth {
   }
 
   private playUrl(url: string, gain = 1.0): boolean {
-    if (this.muted || this.volume <= 0 || typeof window === 'undefined' || typeof Audio === 'undefined') {
+    if (!this.foreground || this.muted || this.volume <= 0 || typeof window === 'undefined' || typeof Audio === 'undefined') {
       return false;
     }
-    if (this.activeSfxCount >= 10) return true;
+    if (this.playingSfx.size >= 10) return true;
     try {
       const audio = new Audio(url);
       audio.volume = Math.max(0, Math.min(1, this.volume * gain));
-      this.activeSfxCount += 1;
+      this.playingSfx.add(audio);
       const cleanup = () => {
-        this.activeSfxCount = Math.max(0, this.activeSfxCount - 1);
+        this.playingSfx.delete(audio);
       };
       audio.addEventListener('ended', cleanup, { once: true });
       audio.addEventListener('error', cleanup, { once: true });
@@ -134,7 +145,7 @@ class MuSoundSynth {
 
   private syncMusicElement() {
     if (typeof window === 'undefined') return;
-    if (!this.musicEnabled || this.muted || this.musicVolume <= 0.01) {
+    if (!this.foreground || !this.musicEnabled || this.muted || this.musicVolume <= 0.01) {
       if (this.musicAudio) {
         try {
           this.musicAudio.pause();
@@ -162,7 +173,7 @@ class MuSoundSynth {
   private syncAmbientLoop() {
     if (typeof window === 'undefined') return;
     if (this.musicAudio && !this.musicAudio.paused) return;
-    if (!this.musicEnabled || this.muted || this.musicVolume <= 0.01) {
+    if (!this.foreground || !this.musicEnabled || this.muted || this.musicVolume <= 0.01) {
       if (this.musicTimer !== null) {
         window.clearInterval(this.musicTimer);
         this.musicTimer = null;
@@ -173,7 +184,7 @@ class MuSoundSynth {
 
     const notes = [220, 261.63, 329.63, 293.66, 246.94, 293.66, 392.0, 329.63];
     this.musicTimer = window.setInterval(() => {
-      if (!this.musicEnabled || this.muted || !this.ctx || this.ctx.state !== 'running') return;
+      if (!this.foreground || !this.musicEnabled || this.muted || !this.ctx || this.ctx.state !== 'running') return;
       if (this.musicAudio && !this.musicAudio.paused) return;
       const freq = notes[this.musicStep % notes.length];
       this.musicStep += 1;
@@ -267,7 +278,11 @@ class MuSoundSynth {
     const last = this.monsterSfxThrottle.get(throttleKey) || 0;
     if (now - last < 750) return;
     this.monsterSfxThrottle.set(throttleKey, now);
-    this.playUrl(`./mugroup/audio/monsters/npc${cleanName}${event}.wav`, 0.65);
+    const heavy = ['bang', 'grrr', 'rockmuscle', 'clockwork', 'jackhammer'].includes(cleanName);
+    const flying = ['aibatt', 'flybat', 'meteonyker'].includes(cleanName);
+    const clip = event === 'die1' ? (heavy ? 'openmu/audio/mBullDie' : flying ? 'openmu/audio/mDrakanDie' : 'openmu/audio/mHoundDie')
+      : event === 'dmg1' ? 'mugroup/audio/hit_sword' : heavy ? 'mugroup/audio/stomp' : flying ? 'mugroup/audio/wind' : 'mugroup/audio/swing';
+    this.playUrl(`./${clip}.wav`, 0.65);
   }
 
   public playSkill(soundKey?: string) {

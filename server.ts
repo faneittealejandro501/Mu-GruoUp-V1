@@ -459,8 +459,7 @@ async function startServer() {
     }
   });
 
-  // Serve static ADMIN/*.json files cleanly in dev & prod
-  app.use('/ADMIN', express.static(ADMIN_DIR));
+  // Vite transforms ADMIN JSON imports in development; production serves dist/ADMIN below.
 
   // API: OTA / APK-Web Manifest
   app.get('/api/ota/manifest', (req, res) => {

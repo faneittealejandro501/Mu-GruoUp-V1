@@ -1,3 +1,4 @@
+import worldRules from '../../ADMIN/world-rules.json' with { type: 'json' };
 import type { HeroClass, MapDef, MapId, MonsterSpawnDef, MuItem, NpcDef, ShopItemDef } from '../types/game';
 
 const WORLD_SIZE_M = 3072;
@@ -173,106 +174,26 @@ export const MU_MAPS: MapDef[] = [
     npcs: makeNpcs('crater_ceniza', 2540, 490),
     monsters: COMMON_MONSTERS.crater_ceniza,
   },
-  {
-    id: 'lorencia',
-    name: 'Lorencia Clásica',
-    subtitle: 'Puente norte y campos de herrería tradicional MU',
-    minLevel: 1,
-    maxLevel: 30,
-    warpZen: 1000,
-    areaKm2: AREA_KM2,
-    worldSize: WORLD_SIZE_M,
-    cityRadius: 500,
-    spawn: { x: 1336, z: 1281 },
-    skyColor: '#1f2e47',
-    groundTint: '#526f43',
-    npcs: makeNpcs('lorencia', 1336, 1281),
-    monsters: COMMON_MONSTERS.flaris,
-  },
-  {
-    id: 'noria',
-    name: 'Noria Élfica',
-    subtitle: 'Santuario bosque de las hadas y arqueras',
-    minLevel: 15,
-    maxLevel: 40,
-    warpZen: 2000,
-    areaKm2: AREA_KM2,
-    worldSize: WORLD_SIZE_M,
-    cityRadius: 500,
-    spawn: { x: 520, z: 2440 },
-    skyColor: '#193836',
-    groundTint: '#3d7053',
-    npcs: makeNpcs('noria', 520, 2440),
-    monsters: COMMON_MONSTERS.robledal,
-  },
-  {
-    id: 'devias',
-    name: 'Devias Nevada',
-    subtitle: 'Fortaleza helada y gremios guerreros',
-    minLevel: 35,
-    maxLevel: 65,
-    warpZen: 4500,
-    areaKm2: AREA_KM2,
-    worldSize: WORLD_SIZE_M,
-    cityRadius: 500,
-    spawn: { x: 2300, z: 2390 },
-    skyColor: '#253954',
-    groundTint: '#7a95ab',
-    npcs: makeNpcs('devias', 2300, 2390),
-    monsters: COMMON_MONSTERS.puerto_bruma,
-  },
-  {
-    id: 'atlans',
-    name: 'Atlans Abisal',
-    subtitle: 'Santuario submarino y tesoros excelentes',
-    minLevel: 50,
-    maxLevel: 78,
-    warpZen: 7500,
-    areaKm2: AREA_KM2,
-    worldSize: WORLD_SIZE_M,
-    cityRadius: 500,
-    spawn: { x: 2300, z: 2390 },
-    skyColor: '#122940',
-    groundTint: '#2b5870',
-    npcs: makeNpcs('atlans', 2300, 2390),
-    monsters: COMMON_MONSTERS.puerto_bruma,
-  },
-  {
-    id: 'losttower',
-    name: 'Lost Tower',
-    subtitle: 'Torre de Balrog y caballeros malditos',
-    minLevel: 65,
-    maxLevel: 88,
-    warpZen: 9500,
-    areaKm2: AREA_KM2,
-    worldSize: WORLD_SIZE_M,
-    cityRadius: 500,
-    spawn: { x: 2540, z: 490 },
-    skyColor: '#23162b',
-    groundTint: '#4f334a',
-    npcs: makeNpcs('losttower', 2540, 490),
-    monsters: COMMON_MONSTERS.crater_ceniza,
-  },
-  {
-    id: 'icarus',
-    name: 'Icarus Celestial',
-    subtitle: 'Cielos altos · Requiere Alas y equipo de alto nivel',
-    minLevel: 80,
-    maxLevel: 99,
-    warpZen: 15000,
-    areaKm2: AREA_KM2,
-    worldSize: WORLD_SIZE_M,
-    cityRadius: 500,
-    spawn: { x: 2540, z: 490 },
-    skyColor: '#1d2d52',
-    groundTint: '#5b6d8a',
-    npcs: makeNpcs('icarus', 2540, 490),
-    monsters: COMMON_MONSTERS.crater_ceniza,
-  },
 ];
 
+for (const map of MU_MAPS) {
+  const key = map.id === 'puerto_bruma' ? 'puerto' : map.id === 'crater_ceniza' ? 'ceniza' : map.id;
+  const rules = worldRules.maps[key as keyof typeof worldRules.maps];
+  if (!rules) continue;
+  map.spawn = rules.spawn;
+  map.minLevel = rules.minLevel;
+  map.maxLevel = rules.maxLevel;
+  map.warpZen = rules.warpZen;
+  map.cityRadius = Math.max(1, Math.min(500, rules.cityRadius));
+}
+
 export function getMapById(id: string | undefined | null): MapDef {
-  return MU_MAPS.find((m) => m.id === id) || MU_MAPS[0];
+  const legacy: Record<string, string> = { lorencia: 'flaris', noria: 'robledal', devias: 'puerto_bruma', atlans: 'puerto_bruma', losttower: 'crater_ceniza', icarus: 'crater_ceniza' };
+  return MU_MAPS.find(m => m.id === (legacy[id || ''] || id)) || MU_MAPS[0];
+}
+
+export function displayItemName(name: string): string {
+  return name.replace(/ \(Flyff\)/g, '').replace(/ \(Flyff Evo /g, ' (Evo ');
 }
 
 export const MU_SHOP_CATALOG: ShopItemDef[] = [
@@ -549,7 +470,7 @@ export const MU_SHOP_CATALOG: ShopItemDef[] = [
   // Alas y Joyería
   {
     id: 'shop_wing_feather',
-    name: 'Alas Pluma de Flaris (Flyff)',
+    name: 'Alas Pluma de Flaris',
     slot: 'wings',
     category: 'wings',
     setName: 'Alas Madrigal',
@@ -670,8 +591,8 @@ export const MU_CHAOS_WINGS_RECIPES: ChaosWingRecipe[] = [
       DK: 'Alas de Ángel MU (OpenMU Evo 1)',
       DW: 'Alas de Ángel MU (OpenMU Evo 1)',
       ELF: 'Alas de Hada MU (OpenMU Evo 1)',
-      DL: 'Alas Pluma de Flaris (Flyff Evo 1)',
-      MG: 'Alas Pluma de Flaris (Flyff Evo 1)',
+      DL: 'Alas Pluma de Flaris (Evo 1)',
+      MG: 'Alas Pluma de Flaris (Evo 1)',
     },
   },
   {
@@ -693,7 +614,7 @@ export const MU_CHAOS_WINGS_RECIPES: ChaosWingRecipe[] = [
       DW: 'Wings of Soul (MU Evo 2)',
       ELF: 'Wings of Spirit (MU Evo 2)',
       DL: 'Cape of Lord (MU Evo 2)',
-      MG: 'Alas Celestiales (Flyff Evo 2)',
+      MG: 'Alas Celestiales (Evo 2)',
     },
   },
   {
@@ -712,9 +633,9 @@ export const MU_CHAOS_WINGS_RECIPES: ChaosWingRecipe[] = [
     scaleLabel: 'Tamaño 6.0x (3x Evo 2)',
     wingNames: {
       DK: 'Alas de Dragón MU (OpenMU Evo 3)',
-      DW: 'Alas del Profeta de Madrigal (Flyff Evo 3)',
+      DW: 'Alas del Profeta de Madrigal (Evo 3)',
       ELF: 'Wing of Illusion +13',
-      DL: 'Alas del Profeta de Madrigal (Flyff Evo 3)',
+      DL: 'Alas del Profeta de Madrigal (Evo 3)',
       MG: 'Alas de Dragón MU (OpenMU Evo 3)',
     },
   },

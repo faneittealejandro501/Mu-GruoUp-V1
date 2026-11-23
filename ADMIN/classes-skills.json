@@ -10,7 +10,7 @@
         "dk_slash": { "damageMultiplier": 1.08, "mpCost": 0, "agCost": 4, "cooldownSec": 0.45 },
         "dk_twisting": { "damageMultiplier": 1.52, "mpCost": 10, "agCost": 10, "cooldownSec": 1.0 },
         "dk_death_stab": { "damageMultiplier": 1.92, "mpCost": 14, "agCost": 15, "cooldownSec": 1.2 },
-        "dk_rageful": { "damageMultiplier": 2.15, "mpCost": 18, "agCost": 20, "cooldownSec": 1.8 }
+        "dk_rageful_blow": { "damageMultiplier": 2.15, "mpCost": 18, "agCost": 20, "cooldownSec": 1.8 }
       }
     },
     "DW": {
@@ -18,8 +18,8 @@
       "flyffArchetypes": ["Psykeeper → Mentalist"],
       "allowedSkillPrefixes": ["SI_PSY_"],
       "skillOverrides": {
-        "dw_bolt": { "damageMultiplier": 1.08, "mpCost": 0, "agCost": 4, "cooldownSec": 0.45 },
-        "dw_evil": { "damageMultiplier": 1.55, "mpCost": 14, "agCost": 10, "cooldownSec": 1.1 }
+        "dw_energy_bolt": { "damageMultiplier": 1.08, "mpCost": 0, "agCost": 4, "cooldownSec": 0.45 },
+        "dw_evil_spirit": { "damageMultiplier": 1.55, "mpCost": 14, "agCost": 10, "cooldownSec": 1.1 }
       }
     },
     "MG": {
