@@ -104,6 +104,7 @@ export interface MuCharacter {
   accountId: string;
   name: string;
   classType: HeroClass;
+  appearanceId?: string;
   sex: 'male' | 'female';
   level: number;
   resets: number;

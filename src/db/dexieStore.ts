@@ -1,3 +1,4 @@
+import { findHeroAppearance } from '../data/heroAppearances';
 import Dexie, { type Table } from 'dexie';
 import {
   DEFAULT_BUTTON_LAYOUTS,
@@ -170,6 +171,7 @@ export function normalizeCharacterRecord(c: MuCharacter): MuCharacter {
   return {
     ...c,
     sex: c.sex === 'female' ? 'female' : 'male',
+    appearanceId: findHeroAppearance(c.appearanceId, c.classType)?.id,
     level: safeLevel,
     resets: Math.max(0, Number(c.resets) || 0),
     xp: Math.max(0, Number(c.xp) || 0),
@@ -429,6 +431,7 @@ export async function createCharacterForAccount(
   name: string,
   classType: HeroClass,
   sex: 'male' | 'female',
+  appearanceId?: string,
 ): Promise<MuCharacter> {
   await initDexie();
   const meta = MU_CLASSES.find((m) => m.id === classType) || MU_CLASSES[0];
@@ -442,6 +445,7 @@ export async function createCharacterForAccount(
     name: name.trim().slice(0, 16) || 'Héroe',
     classType,
     sex,
+    appearanceId,
     level: 1,
     resets: 0,
     xp: 0,
