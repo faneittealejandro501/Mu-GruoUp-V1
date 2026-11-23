@@ -33,6 +33,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ onOpenApkCen
   const deferredPrompt = useSyncExternalStore(subscribe, () => pendingPrompt);
   const [isInstalled, setIsInstalled] = useState(false);
 
+  const [help,setHelp] = useState(false);
   const [offlineReady, setOfflineReady] = useState(false);
   useEffect(() => {
     let mounted = true;
@@ -65,19 +66,17 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ onOpenApkCen
     if (deferredPrompt && offlineReady) {
       void navigator.storage?.persist?.().catch(() => {});
       setPrompt(null);
-      try { await deferredPrompt.prompt(); } catch { onOpenApkCenter?.(); }
+      try { await deferredPrompt.prompt(); } catch { setHelp(true); }
       return;
     }
-    if (onOpenApkCenter) {
-      onOpenApkCenter();
-    }
+    setHelp(true);
   };
 
-  if (isInstalled && !onOpenApkCenter) {
+  if (isInstalled) {
     return null;
   }
 
-  return (
+  return (<>
     <button
       type="button"
       disabled={!onOpenApkCenter && (!deferredPrompt || !offlineReady)}
@@ -85,8 +84,11 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ onOpenApkCen
       className="min-h-[38px] px-3 rounded-lg bg-[#162033] hover:bg-slate-700 border border-amber-500/50 text-amber-200 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
     >
       {deferredPrompt ? <Download className="w-3.5 h-3.5 text-emerald-400" /> : <Smartphone className="w-3.5 h-3.5 text-amber-400" />}
-      {offlineReady && deferredPrompt ? 'Instalar para jugar sin conexión' : onOpenApkCenter ? 'APKweb · Descarga' : offlineReady ? 'Cliente guardado' : 'Preparando cliente sin conexión…'}
+      Descargar APK-WEB
     </button>
+    {help && <div role="dialog" aria-label="Descargar APK-WEB" className="fixed z-50 top-16 right-4 max-w-xs p-4 rounded-lg bg-slate-950 border border-amber-500 text-sm text-amber-100">
+      {offlineReady ? 'Cliente completo. Para instalarlo, abre el menú del navegador y elige Instalar aplicación o Añadir a inicio.' : 'Mantén esta página abierta con internet mientras se guarda el cliente completo para jugar sin conexión.'}
+      <button className="block mt-3 underline" onClick={()=>setHelp(false)}>Cerrar</button></div>}</>
   );
 };
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { cloudSyncManager } from '../services/cloudSyncManager';
 
-export function PrivateBackupPanel({ onRestored }: { onRestored: () => Promise<void> }) {
+export function PrivateBackupPanel({ onRestored, restoreOnly = false }: { restoreOnly?: boolean; onRestored: () => Promise<void> }) {
   const [code, setCode] = useState('');
   const [display, setDisplay] = useState('');
   const [busy, setBusy] = useState(false);
@@ -17,8 +17,8 @@ export function PrivateBackupPanel({ onRestored }: { onRestored: () => Promise<v
         await onRestored();
         setMessage(`Copia restaurada: ${characters} héroes. Entra con tu cuenta o restablece tu contraseña en la opción de recuperación.`);
       } else {
-        setDisplay(await cloudSyncManager.createPrivateBackup());
-        setMessage('Copia guardada. Conserva este código en un lugar privado para recuperar tu cuenta.');
+        setDisplay(await cloudSyncManager.preparePrivateBackup());
+        setMessage('Guarda este código. La copia se enviará con conexión; podrás recuperarla después de la primera sincronización.');
       }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'No se pudo usar el respaldo privado.');
@@ -26,13 +26,13 @@ export function PrivateBackupPanel({ onRestored }: { onRestored: () => Promise<v
   };
 
   return <div className="p-4 rounded-xl bg-[#141a26] border border-slate-800 space-y-2.5">
-    <h3 className="text-sm font-semibold text-sky-300">3. Copia privada</h3>
+    <h3 className="text-sm font-semibold text-sky-300">Copia privada</h3>
     <p className="text-xs text-slate-300">
       Guarda tu cuenta, héroes y equipo cifrados en el servidor configurado. El progreso se sincroniza cuando vuelves a conectar.
     </p>
-    <button disabled={busy} onClick={() => void run(false)} className="min-h-[38px] px-3 rounded-lg bg-sky-700 text-white text-xs font-semibold disabled:opacity-50">
+    {!restoreOnly && <button disabled={busy} onClick={() => void run(false)} className="min-h-[38px] px-3 rounded-lg bg-sky-700 text-white text-xs font-semibold disabled:opacity-50">
       Crear copia o ver mi código
-    </button>
+    </button>}
     {display && <input aria-label="Tu código privado" value={display} onFocus={e => e.target.select()} readOnly className="w-full rounded-md bg-slate-950 text-slate-200 font-mono text-xs p-2" />}
     <form className="flex flex-wrap gap-2" onSubmit={e => { e.preventDefault(); void run(true); }}>
       <input type="password" autoComplete="off" aria-label="Código de recuperación" placeholder="Código de recuperación" value={code} onChange={e => setCode(e.target.value)}

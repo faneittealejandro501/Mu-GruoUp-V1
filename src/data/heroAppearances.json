@@ -1,8 +1,3 @@
 [
-  { "id": "sylvanas", "name": "Sylvanas", "classId": "ELF", "color": "#91bba7" },
-  { "id": "hechicera", "name": "Hechicera Astral", "maleName": "Hechicero Astral", "classId": "DW", "color": "#c9a0ff" },
-  { "id": "raphtalia", "name": "Raphtalia", "classId": "DK", "color": "#f7a569" },
-  { "id": "albedo", "name": "Albedo", "classId": "DL", "color": "#f2d19c" },
-  { "id": "kirito", "name": "Kirito", "classId": "MG", "color": "#83bafa" },
-  { "id": "guardiana", "name": "Guardiana del Bosque", "maleName": "Guardián del Bosque", "classId": "DK", "color": "#88d4ac" }
+  {"id": "hechicera", "name": "Hechicera Astral", "maleName": "Hechicero Astral", "classId": "DW", "color": "#c9a0ff"}
 ]

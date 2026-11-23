@@ -23,6 +23,8 @@ SOURCES = (
     "4./albedo.fbx", "5./kirito.fbx", "6./Model_Rig.blend1",
 )
 
+SOURCE_INDEX = {"hechicera": 1}
+
 
 class Glb:
     def __init__(self, path, keep_base=False):
@@ -456,7 +458,9 @@ def main():
     parser.add_argument("--only", choices=[x["id"] for x in CATALOG])
     args = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
-    for index, (skin, source) in enumerate(zip(CATALOG, SOURCES)):
+    for skin in CATALOG:
+        index = SOURCE_INDEX[skin["id"]]
+        source = SOURCES[index]
         slug, cls = skin["id"], skin["classId"]
         if args.only and slug != args.only:
             continue

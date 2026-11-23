@@ -1,4 +1,5 @@
-import { HERO_APPEARANCES, findHeroAppearance, heroAppearanceName, heroAppearancePath } from '../data/heroAppearances';
+import { HERO_APPEARANCES, findHeroAppearance, heroAppearanceName } from '../data/heroAppearances';
+import { PrivateBackupPanel } from './PrivateBackupPanel';
 import React, { useState } from 'react';
 import {
   Cloud,
@@ -49,6 +50,8 @@ interface ClassicLoginFlowProps {
   }) => Promise<{ ok: boolean; message?: string; error?: string }>;
   onSelectCharacter: (charId: string) => void;
   onCreateCharacter: (name: string, classType: HeroClass, sex: 'male' | 'female', appearanceId?: string) => Promise<void>;
+  onRotatePreview: (dx:number) => void;
+  onRestore: () => Promise<void>;
   onEnterWorld: () => void;
   onLogoutAccount: () => void;
   onOpenApkCenter: () => void;
@@ -83,11 +86,12 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
   onRecoverAccount,
   onSelectCharacter,
   onCreateCharacter,
-  onEnterWorld,
+  onEnterWorld, onRestore, onRotatePreview,
   onLogoutAccount,
   onOpenApkCenter,
   onPreviewClass,
 }) => {
+  const pointer = React.useRef<{id:number; x:number} | null>(null);
   const [authTab, setAuthTab] = useState<'login' | 'register' | 'recover'>('login');
 
   // Login & Change Password state
@@ -236,11 +240,12 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
   };
 
   return (
-    <div className="absolute inset-0 z-20 flex flex-col justify-between p-4 sm:p-6 bg-gradient-to-b from-[#080b12]/75 via-[#080b12]/40 to-[#080b12]/90 overflow-y-auto mu-scroll">
+    <div className={`realm-screen realm-${stage} absolute inset-0 z-20 flex flex-col justify-between p-4 sm:p-6 overflow-y-auto mu-scroll`}
+      style={stage === 'login' ? {backgroundImage: `url(./mugroup/portadas/${{login:'acceso',register:'registro',recover:'recuperacion'}[authTab]}.webp)`} : undefined}>
       {/* Top Bar */}
       <div className="flex items-center justify-between gap-3 shrink-0 flex-wrap">
         <div className="flex items-center gap-3 text-xs text-amber-200/90 font-mono-tabular">
-          <span>MuGro-up&apos; · Babylon.js 3D · Dexie Offline-First</span>
+          <span>MuGro'up · Crónicas del reino</span>
           <span className="text-slate-500">·</span>
           <span className={`inline-flex items-center gap-1 ${syncStatus.isOnline ? 'text-emerald-300' : 'text-amber-300'}`}>
             {syncStatus.isOnline ? <Cloud className="w-3.5 h-3.5" /> : <CloudOff className="w-3.5 h-3.5" />}
@@ -249,8 +254,8 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
                 ? 'Sincronizando...'
                 : syncStatus.pendingCount > 0
                   ? `${syncStatus.pendingCount} pendientes`
-                  : 'Nube Sincronizada'
-              : 'Offline (IndexedDB)'}
+                  : 'En línea'
+              : 'Guardado local'}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -269,7 +274,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
 
       {/* STAGE 1: 3-TAB OFFLINE-FIRST AUTHENTICATION */}
       {stage === 'login' && (
-        <div className="my-auto mx-auto w-full max-w-lg space-y-3 py-2">
+        <div className="realm-auth my-auto w-full max-w-lg space-y-3 py-2">
           <div className="text-center">
             <svg viewBox="0 0 460 80" className="w-full max-w-[330px] mx-auto h-auto" role="img" aria-label="MuGro-up'">
               <defs>
@@ -571,6 +576,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
               {/* TAB 3: RECUPERAR CUENTA (Local + Descarga desde Nube) */}
               {authTab === 'recover' && (
                 <div className="space-y-3">
+                  <PrivateBackupPanel restoreOnly onRestored={onRestore} /><button className="text-xs text-amber-200" onClick={onOpenApkCenter}>Configurar servidor de respaldo</button>
                   <form onSubmit={handleLookupQuestions} className="flex gap-2 items-end">
                     <div className="flex-1">
                       <label className="block text-xs text-slate-300 mb-1">Nombre de Usuario a Recuperar</label>
@@ -653,8 +659,14 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
 
       {/* STAGE 2: CLASSIC MU CHARACTER SELECT & CREATE */}
       {stage === 'character_select' && (
-        <div className="my-auto flex flex-col lg:flex-row items-stretch lg:items-end justify-between gap-4 max-w-6xl w-full mx-auto">
-          <div className="w-full lg:w-[410px] rounded-xl bg-[#0e131f]/95 border-2 border-amber-700/60 p-4 space-y-3 shadow-2xl">
+        <div className="realm-roster">
+          <div className="realm-turn" tabIndex={0} role="group" aria-label="Girar personaje"
+            onKeyDown={e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {e.preventDefault(); onRotatePreview(e.key === 'ArrowLeft' ? -18 : 18);} }}
+            onPointerDown={e => {pointer.current={id:e.pointerId,x:e.clientX}; e.currentTarget.setPointerCapture(e.pointerId);}}
+            onLostPointerCapture={() => {pointer.current=null;}}
+            onPointerMove={e => {const p=pointer.current; if (p?.id === e.pointerId) {onRotatePreview(e.clientX-p.x); p.x=e.clientX;}}}>
+            <span>↔ &nbsp; Arrastra para girar</span></div>
+          <div className="realm-controls rounded-xl bg-[#0e131f]/95 border-2 border-amber-700/60 p-4 space-y-3 shadow-2xl">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-amber-400" />
@@ -676,6 +688,9 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
               )}
             </div>
 
+            {!creatingChar && <details className="text-xs text-amber-200"><summary>Copia y recuperación de cuenta</summary>
+              <PrivateBackupPanel key={currentAccount?.id} onRestored={onRestore} />
+              <button onClick={onOpenApkCenter}>Configurar servidor de respaldo</button></details>}
             {!creatingChar ? (
               <div className="space-y-2 max-h-[240px] overflow-y-auto mu-scroll">
                 {characters.length === 0 ? (
@@ -714,9 +729,9 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
             ) : (
               <form onSubmit={handleCreateSubmit} className="space-y-3">
                 <div className="text-xs font-semibold text-amber-200">
-                  Nuevo Héroe · Elige una de las 5 clases de MuGro-up'
+                  Nuevo héroe · Elige tu personaje
                 </div>
-                <div className="grid grid-cols-1 gap-1.5 max-h-[180px] overflow-y-auto mu-scroll">
+                <div className="grid grid-cols-2 gap-1.5 max-h-[215px] overflow-y-auto mu-scroll">
                   {MU_CLASSES.map((cls) => (
                     <button
                       key={cls.id}
@@ -727,7 +742,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
                         onPreviewClass(cls.id, newCharSex);
                       }}
                       className={`p-2.5 rounded-lg border text-left cursor-pointer ${
-                        newCharClass === cls.id
+                        newCharClass === cls.id && !newAppearance
                           ? 'bg-[#1c253b] border-amber-500 text-amber-200'
                           : 'bg-[#0a0e17] border-slate-800 text-slate-300'
                       }`}
@@ -736,29 +751,10 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
                       <div className="text-[11px] text-slate-400">{cls.role}</div>
                     </button>
                   ))}
-                </div>
-                <div className="flex items-center gap-3">
-                  <label className="flex-1 text-xs text-amber-200">
-                    Apariencia
-                    <select value={newAppearanceId} onChange={event => {
-                      const appearance = findHeroAppearance(event.target.value);
-                      const cls = appearance?.classId ?? newCharClass;
-                      setNewAppearanceId(appearance?.id ?? '');
-                      setNewCharClass(cls);
-                      onPreviewClass(cls, newCharSex, appearance?.id);
-                    }} className="block w-full min-h-[42px] mt-1 rounded border border-slate-600 bg-[#080b12] px-2">
-                      <option value="">Original de la clase</option>
-                      {HERO_APPEARANCES.map(appearance => (
-                        <option key={appearance.id} value={appearance.id}>{heroAppearanceName(appearance, newCharSex)} · {appearance.classId}</option>
-                      ))}
-                    </select>
-                  </label>
-                  {newAppearance && <img
-                    src={`./mugroup/${heroAppearancePath(newAppearance.id, newCharSex)}.png`}
-                    alt={`${heroAppearanceName(newAppearance, newCharSex)} · ${newCharSex === 'female' ? 'Femenino' : 'Masculino'}`}
-                    width={54} height={72}
-                    className="h-[72px] w-[54px] rounded border border-amber-500/50 object-cover"
-                  />}
+                  {HERO_APPEARANCES.map(look => <button key={look.id} type="button" aria-pressed={newAppearance?.id === look.id}
+                    className="realm-astral rounded-lg border p-2 text-left text-xs" onClick={() => {
+                      setNewAppearanceId(look.id); setNewCharClass(look.classId); onPreviewClass(look.classId,newCharSex,look.id);
+                    }}><strong>{heroAppearanceName(look,newCharSex)}</strong><br/>Magia astral · Mago</button>)}
                 </div>
                 <fieldset className="flex gap-2" aria-label="Variante del personaje">
                   {(['male', 'female'] as const).map(sex => <button key={sex} type="button"
@@ -797,13 +793,13 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
           </div>
 
           {!creatingChar && selectedCharId && (
-            <div className="w-full lg:w-auto flex flex-col items-stretch lg:items-end gap-2">
+            <div className="realm-enter flex flex-col gap-2">
               <button
                 onClick={onEnterWorld}
                 className="min-h-[54px] px-8 rounded-xl bg-amber-600 hover:bg-amber-500 text-slate-950 font-display font-bold text-base inline-flex items-center justify-center gap-2.5 shadow-2xl cursor-pointer"
               >
                 <Play className="w-5 h-5 fill-current" />
-                ENTRAR AL JUEGO (BABYLON 3D)
+                INGREAS A MuGro'up
               </button>
               <div className="text-xs text-slate-300 font-mono-tabular flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
@@ -815,7 +811,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
       )}
 
       <div className="text-[11px] text-slate-400 font-mono-tabular text-center pt-2 shrink-0">
-        Orientación recomendada: Horizontal (Landscape) · Progreso guardado offline en Dexie IndexedDB y sincronizado por timestamp
+        Tu aventura se guarda en este dispositivo.
       </div>
     </div>
   );

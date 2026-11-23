@@ -1,15 +1,20 @@
 <!-- coderabbit-ai-generated:v1 -->
 
-# Colección Mobilee
+<!-- coderabbit-ai-generated:v1 -->
 
-En **Crear Personaje → Apariencia** se puede elegir cualquiera de los seis diseños, en femenino o masculino. Cada diseño usa el combate y el inventario de la clase indicada. La apariencia se guarda con el personaje. El modelo conserva su traje propio; el arma, el escudo y las alas pueden cambiar al equiparlos. La armadura conserva sus estadísticas.
+<!-- coderabbit-ai-generated-section:v1:cb0fb9fa7e75903e337a32f3078694e6452350c31400bd2b004fea8e81fc791a -->
 
-Los GLB se sirven desde `public/mugroup/personajes/mobilee` y se incluyen en la caché de APKweb. Cada GLB pesa menos de 2 MiB e incluye materiales y sus animaciones sin depender de peticiones externas. Los archivos de las partidas anteriores no necesitan migración.
+# Personajes Astrales
 
-## Fuentes y reconstrucción
+En **Crear Personaje**, el dúo Astral aparece junto a los personajes originales. Selecciona su tarjeta y cambia entre Femenino y Masculino. Usa los poderes del Mago. Una partida con una apariencia retirada usa el modelo original de su clase; los personajes y sus objetos se conservan.
 
-La fuente es [Personajes.zip en Mobilee](https://github.com/angelicamarin313555/Mobilee/blob/982b6e7ff1e0eb18a75b6e0b7c586bed2968f3c5/Personajes.zip). Los seis números del ZIP corresponden al orden de `src/data/heroAppearances.json`. Se conserva la autoría de las fuentes. El ZIP no incluye documentación de licencia.
+Los modelos y retratos se sirven desde `public/mugroup/personajes/mobilee` y forman parte de la instalación sin conexión. El archivo Blender de la carpeta 2 de [Personajes.zip](https://github.com/angelicamarin313555/Mobilee/blob/982b6e7ff1e0eb18a75b6e0b7c586bed2968f3c5/Personajes.zip) aporta la chaqueta. El cuerpo, el sombrero y los detalles completan el modelo. Para reconstruirlo desde la raíz con bpy 5.0.1, NumPy y Pillow: `python tools/mobilee/build.py /ruta/Personajes`.
 
-La chaqueta de la hechicera es el único objeto de su archivo Blender. La variante se completó con un sombrero y detalles nuevos sobre el modelo de Mago. La Guardiana conserva su malla y sus pesos originales adaptados; los materiales se reconstruyeron porque el ZIP no trae los TIFF que pide el modelo.
+## Publicar y recuperar
 
-Para reconstruir los GLB desde el directorio raíz con Blender bpy 5.0.1, NumPy y Pillow: `python tools/mobilee/build.py /ruta/Personajes`. El importador abre los archivos Blender con scripts desactivados. Para regenerar las imágenes, renderiza los GLB y escala los retratos de la interfaz a 144 × 196.
+Publica el cliente en el mismo dominio y ruta y aumenta la versión de `public/ota-manifest.json` con cada entrega. La aplicación comprueba el service worker al abrirse, al volver a primer plano y al recuperar conexión. Una instalación anterior a 2.6 puede necesitar cerrarse completamente y volver a abrirse una vez.
+
+Para dar recuperación entre dispositivos a los jugadores de Pages, despliega el servidor incluido sobre HTTPS, con almacenamiento persistente en `MU_BACKUP_DIR` y el origen de Pages permitido en `MU_BACKUP_ORIGINS`. Configura la variable de Actions `VITE_BACKUP_URL` con la URL base del servidor y vuelve a publicar. En selección de personaje, abre **Copia y recuperación de cuenta**, activa la copia y guarda el código. Tras la primera sincronización, se puede restaurar desde **Recuperar cuenta**. GitHub Pages por sí solo no almacena respaldos privados.
+
+
+<!-- /coderabbit-ai-generated:v1 -->

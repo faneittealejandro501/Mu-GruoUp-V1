@@ -40,6 +40,8 @@ jobs:
         run: bun run verify:flyff
 
       - name: Build
+        env:
+          VITE_BACKUP_URL: ${{ vars.VITE_BACKUP_URL }}
         run: bun run build
 
       - name: Run release tests

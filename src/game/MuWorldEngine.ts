@@ -455,16 +455,23 @@ export class MuWorldEngine {
     this.activeBonuses = bonuses;
   }
 
+  private combatHover = 0;
+  public resizeView() { this.engine.resize(); }
+  public rotatePreview(delta: number) {
+    if (this.mode === 'character_select') this.camera.alpha -= delta * .013;
+  }
   public setMode(mode: 'title' | 'character_select' | 'playing'): void {
     this.mode = mode;
     if (mode !== 'playing') {
       soundSynth.setShoreline(0);
-      this.camera.radius = 4.6;
+      this.camera.lowerRadiusLimit = 2;
+      this.camera.radius = 3.25;
       this.camera.beta = 1.28;
       this.camera.alpha = -Math.PI / 2;
       this.camera.target.set(this.heroX, this.heroY + 1.15, this.heroZ);
       soundSynth.setMapMusic('login');
     } else {
+      this.camera.lowerRadiusLimit = 5;
       this.camera.radius = this.cameraDistance;
       this.camera.beta = 1.14;
       const rules = getAdminConfigSync()['world-rules'];
@@ -1364,7 +1371,12 @@ export class MuWorldEngine {
         soundSynth.playWingFlap();
       }
     } else this.wingPhase = 0;
-    this.hoverOffset = flightHeight(this.wingPhase) * this.wingLift;
+    let nearEnemy = false;
+    if (flying) for (const m of this.loadedMonsters) {
+      if (m.alive && (m.x-this.heroX)**2 + (m.z-this.heroZ)**2 < 100) { nearEnemy = true; break; }
+    }
+    this.combatHover += ((nearEnemy ? 1 : 0) - this.combatHover) * (1 - Math.exp(-dt * 8));
+    this.hoverOffset = (flightHeight(this.wingPhase) * (1 - this.combatHover) + this.combatHover) * this.wingLift;
     if (this.flyff.actor) this.flyff.actor.wingPhase = flying ? this.wingPhase : (this.flyff.worldClock / 2) % 1;
 
     const groundY = this.flyff.world.collision.floor(
@@ -1406,7 +1418,7 @@ export class MuWorldEngine {
       if (!this.isGrounded) {
         this.flyff.actor.playClip(this.heroVelY > 0 ? 'jump_rise' : 'jump_fall', true);
       } else {
-        this.flyff.actor.playClip(flying ? (this.wingPhase > 0.5 ? 'jump_fall' : 'jump_rise') : moving ? (len < 0.5 ? 'walk' : 'run') : 'idle', true);
+        this.flyff.actor.playClip(flying && !nearEnemy ? (this.wingPhase > 0.5 ? 'jump_fall' : 'jump_rise') : moving ? (len < 0.5 ? 'walk' : 'run') : 'idle', true);
       }
     }
 

@@ -145,7 +145,7 @@ const INITIAL_SETTINGS: GameSettings = {
 };
 
 export default function App() {
-  useEffect(watchWebUpdates, []);
+  const [loadingScene, setLoadingScene] = useState({ art: 'entrada', label: 'Abriendo el reino' });
   const worldLoadRef = useRef(false);
   const [worldLoading,setWorldLoading] = useState(false);
   const [engineError, setEngineError] = useState<string | null>(null);
@@ -217,6 +217,24 @@ export default function App() {
   const roomRef = useRef<RoomState | null>(null);
   const settingsRef = useRef<GameSettings>(INITIAL_SETTINGS);
   const screenStageRef = useRef(screenStage);
+  useEffect(() => watchWebUpdates(async () => {
+    if (worldLoadRef.current) return false;
+    const c = charRef.current;
+    const pose = screenStageRef.current === 'playing' && engineRef.current?.getHeroPose();
+    await db.transaction('rw', db.tables, async () => {
+      if (c && pose) await db.characters.update(c.id, {
+        lastX: pose.x, lastZ: pose.z, lastRotY: pose.rotY, updatedAt: Date.now(), isSynced: false,
+      });
+    });
+    return !worldLoadRef.current;
+  }), []);
+  useEffect(() => {
+    const mount = canvasMountRef.current;
+    if (!mount) return;
+    const observer = new ResizeObserver(() => engineRef.current?.resizeView());
+    observer.observe(mount);
+    return () => observer.disconnect();
+  }, []);
   const currentAccRef = useRef<MuAccount | null>(null);
   const lootFiltersRef = useRef<LootFilterSettings>(DEFAULT_LOOT_FILTERS);
   const potionConfigRef = useRef<PotionConfig>(DEFAULT_POTION_CONFIG);
@@ -1268,17 +1286,23 @@ export default function App() {
   };
 
   const handleCreateCharacter = async (name: string, classType: HeroClass, sex: 'male' | 'female', appearanceId?: string) => {
-    if (!currentAccount) return;
+    if (!currentAccount || worldLoadRef.current) return;
+    worldLoadRef.current = true;
+    setLoadingScene({art:'entrada', label:'Creando tu personaje'});
+    setWorldLoading(true);
+    try {
     const created = await createCharacterForAccount(currentAccount.id, name, classType, sex, appearanceId);
     const chars = await listCharactersByAccount(currentAccount.id);
     setCharacters(chars);
     await selectAndHydrateCharacter(created);
     soundSynth.playForge(true);
+    } finally { worldLoadRef.current = false; setWorldLoading(false); }
   };
 
   const handleEnterWorld = async () => {
     const engine = engineRef.current;
     if (!character || !engine || worldLoadRef.current) return;
+    setLoadingScene({art:'entrada', label:'Entrando con ' + character.name});
     worldLoadRef.current = true; setWorldLoading(true);
     try {
       if (window.innerWidth < 1024) await requestLandscapeFullscreen();
@@ -1302,6 +1326,7 @@ export default function App() {
     if (character.zen < mapCfg.warpZen) {
       pushBanner(`Necesitas ${mapCfg.warpZen.toLocaleString()} Zen para viajar a ${mapCfg.name}`, '#f87171'); return;
     }
+    setLoadingScene({art:'viaje', label:'Viajando a ' + mapCfg.name});
     worldLoadRef.current = true; setWorldLoading(true);
     try {
       await engine.loadMap(mapId, true);
@@ -1634,9 +1659,11 @@ export default function App() {
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-[#0c1018]">
       {engineError && <div role="alert" className="fixed top-2 left-2 right-2 z-50 rounded bg-red-950/95 text-red-100 p-3 text-sm">{engineError}</div>}
-      <div ref={canvasMountRef} className="absolute inset-0 w-full h-full" />
+      <div ref={canvasMountRef} className={`absolute inset-0 w-full h-full ${screenStage === 'character_select' ? 'realm-canvas' : ''}`} />
 
-      {worldLoading && <div role="status" aria-live="polite" className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/90 text-amber-200"><div className="text-center space-y-3"><div className="mx-auto w-10 h-10 rounded-full border-4 border-amber-900 border-t-amber-300 animate-spin" /><p>Cargando personaje y escenario…</p></div></div>}
+      {worldLoading && <div role="status" className="realm-load" style={{backgroundImage: `url(./mugroup/portadas/${loadingScene.art}.webp)`}}>
+        <div><small>✧ &nbsp; CRÓNICAS DEL REINO &nbsp; ✧</small><h1>MuGro'up</h1><p>{loadingScene.label}…</p>
+        <progress aria-label={loadingScene.label} /></div></div>}
       <OfflineIndicator />
 
       {isPortraitMobile && (
@@ -1680,6 +1707,8 @@ export default function App() {
             setScreenStage('login');
           }}
           onOpenApkCenter={() => setActiveDrawer('apk')}
+          onRotatePreview={dx => engineRef.current?.rotatePreview(dx)}
+          onRestore={async () => { await loadAllFromDexie(); }}
           onPreviewClass={(cls, sex, appearanceId) => engineRef.current?.syncHeroAppearance(cls, getStarterItemsForMuClass('preview','Vista previa',cls), sex, appearanceId).catch(console.error)}
         />
       )}
