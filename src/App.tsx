@@ -307,6 +307,7 @@ export default function App() {
       norm.classType,
       charItems.filter((i) => i.isEquipped),
       norm.sex,
+      norm.appearanceId,
     ).catch(console.error);
     return { char: norm, charItems };
   }, []);
@@ -429,6 +430,7 @@ export default function App() {
           targetChar.classType,
           itemsRef.current.filter((i) => i.isEquipped),
           targetChar.sex,
+          targetChar.appearanceId,
         );
         const savedPose =
           !requestedMap && typeof targetChar.lastX === 'number' && typeof targetChar.lastZ === 'number'
@@ -722,6 +724,7 @@ export default function App() {
           activeChar.classType,
           nextItems.filter((i) => i.isEquipped),
           activeChar.sex,
+          activeChar.appearanceId,
         ).catch(console.error);
 
         await recordSharedLedger({
@@ -986,6 +989,7 @@ export default function App() {
         charRef.current.classType,
         itemsRef.current.filter((i) => i.isEquipped),
         charRef.current.sex,
+        charRef.current.appearanceId,
       ).catch(console.error);
     }
 
@@ -1263,9 +1267,9 @@ export default function App() {
     return { ok: false as const, error: 'Primero restaura tu copia privada desde Web / APKweb.' };
   };
 
-  const handleCreateCharacter = async (name: string, classType: HeroClass, sex: 'male' | 'female') => {
+  const handleCreateCharacter = async (name: string, classType: HeroClass, sex: 'male' | 'female', appearanceId?: string) => {
     if (!currentAccount) return;
-    const created = await createCharacterForAccount(currentAccount.id, name, classType, sex);
+    const created = await createCharacterForAccount(currentAccount.id, name, classType, sex, appearanceId);
     const chars = await listCharactersByAccount(currentAccount.id);
     setCharacters(chars);
     await selectAndHydrateCharacter(created);
@@ -1279,7 +1283,7 @@ export default function App() {
     try {
       if (window.innerWidth < 1024) await requestLandscapeFullscreen();
       engine.updateHeroStats(character);
-      await engine.syncHeroAppearance(character.classType, items.filter(i => i.isEquipped), character.sex);
+      await engine.syncHeroAppearance(character.classType, items.filter(i => i.isEquipped), character.sex, character.appearanceId);
       const savedPose =
         typeof character.lastX === 'number' && typeof character.lastZ === 'number'
           ? { x: character.lastX, z: character.lastZ, rotY: character.lastRotY }
@@ -1430,6 +1434,7 @@ export default function App() {
       character.classType,
       nextItems.filter((i) => i.isEquipped),
       character.sex,
+      character.appearanceId,
     ).catch(console.error);
     const toggled = nextItems.find((i) => i.id === itemId);
     soundSynth.playEquip(toggled?.slot === 'wings');
@@ -1447,6 +1452,7 @@ export default function App() {
       result.character.classType,
       result.items.filter((i) => i.isEquipped),
       result.character.sex,
+      result.character.appearanceId,
     ).catch(console.error);
   };
 
@@ -1674,7 +1680,7 @@ export default function App() {
             setScreenStage('login');
           }}
           onOpenApkCenter={() => setActiveDrawer('apk')}
-          onPreviewClass={(cls, sex) => engineRef.current?.syncHeroAppearance(cls, getStarterItemsForMuClass('preview','Vista previa',cls), sex).catch(console.error)}
+          onPreviewClass={(cls, sex, appearanceId) => engineRef.current?.syncHeroAppearance(cls, getStarterItemsForMuClass('preview','Vista previa',cls), sex, appearanceId).catch(console.error)}
         />
       )}
 

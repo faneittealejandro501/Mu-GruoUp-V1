@@ -1,3 +1,4 @@
+import { findHeroAppearance, heroAppearanceName, heroAppearancePath } from '../data/heroAppearances';
 import { HeroMotion } from './content/HeroMotion';
 import { createWaterMaterial, createWaterMesh, updateWaterMaterial } from './content/WaterSurface';
 import type { WingRig } from './content/WingRig';
@@ -31,6 +32,7 @@ export interface PersonajeConfig {
   name: string;
   model: string;
   body: string;
+  costume?: boolean;
   color: string;
   clips: string[];
   outfit: string;
@@ -178,26 +180,26 @@ export class FlyffActor {
 
     const [outfitContainer, bodyContainer] = await Promise.all([
       SceneLoader.LoadAssetContainerAsync(oPath.rootUrl, oPath.fileName, this.scene),
-      SceneLoader.LoadAssetContainerAsync(bPath.rootUrl, bPath.fileName, this.scene),
+      this.config.costume ? null : SceneLoader.LoadAssetContainerAsync(bPath.rootUrl, bPath.fileName, this.scene),
     ]);
 
     outfitContainer.addAllToScene();
-    bodyContainer.addAllToScene();
+    bodyContainer?.addAllToScene();
 
     const outfitRoot =
       outfitContainer.meshes.find((m) => m.name === '__root__') ||
       outfitContainer.transformNodes[0] ||
       null;
     const bodyRoot =
-      bodyContainer.meshes.find((m) => m.name === '__root__') ||
-      bodyContainer.transformNodes[0] ||
+      bodyContainer?.meshes.find((m) => m.name === '__root__') ||
+      bodyContainer?.transformNodes[0] ||
       null;
 
     if (outfitRoot) outfitRoot.parent = this.root;
     if (bodyRoot) bodyRoot.parent = this.root;
 
     const actorSkel = outfitContainer.skeletons[0] || null;
-    for (const bm of bodyContainer.meshes) {
+    for (const bm of bodyContainer?.meshes ?? []) {
       if (bm.name === '__root__') continue;
       if (actorSkel && bm.skeleton) {
         bm.skeleton = actorSkel;
@@ -222,7 +224,7 @@ export class FlyffActor {
     this.body = {
       container: bodyContainer,
       root: bodyRoot,
-      meshes: [...bodyContainer.meshes],
+      meshes: [...(bodyContainer?.meshes ?? [])],
     };
 
     this.combatMotion = new HeroMotion(this.config.classId, outfitContainer.transformNodes);
@@ -768,14 +770,19 @@ export class WorldContentManager {
     this.fx = new FlyffEffectRuntime(scene);
   }
 
-  public async setActor(classType: HeroClass, sex: 'male' | 'female', equippedItems: MuItem[]): Promise<FlyffActor | null> {
+  public async setActor(classType: HeroClass, sex: 'male' | 'female', equippedItems: MuItem[], appearanceId?: string): Promise<FlyffActor | null> {
     const token = ++this.actorRequestToken;
     const list = await loadPersonajesManifest();
-    const cfg =
+    const base =
       list.find((p) => p.classId === classType && p.sex === sex) ||
       list.find((p) => p.classId === classType) ||
       list[0];
-    if (!cfg || token !== this.actorRequestToken || this.scene.isDisposed) return null;
+    if (!base || token !== this.actorRequestToken || this.scene.isDisposed) return null;
+    const appearance = findHeroAppearance(appearanceId, classType);
+    const cfg: PersonajeConfig = appearance ? {
+      ...base, id: `${appearance.id}_${sex}`, name: heroAppearanceName(appearance, sex), color: appearance.color,
+      costume: true, model: `${heroAppearancePath(appearance.id, sex)}.glb`,
+    } : base;
 
     if (this.actor && this.actor.config.id === cfg.id) {
       await this.equipment(equippedItems);
@@ -783,7 +790,12 @@ export class WorldContentManager {
     }
 
     const nextActor = new FlyffActor(this.scene, cfg);
-    await nextActor.load();
+    try {
+      await nextActor.load();
+    } catch (error) {
+      nextActor.dispose(this.appearance);
+      throw error;
+    }
     if (token !== this.actorRequestToken || this.scene.isDisposed) {
       nextActor.dispose(this.appearance);
       return null;

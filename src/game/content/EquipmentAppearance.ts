@@ -48,6 +48,7 @@ export interface FlyffActorLike {
     id: string;
     classId: string;
     sex: 'male' | 'female';
+    costume?: boolean;
   };
   root: TransformNode;
   outfit: {
@@ -323,7 +324,7 @@ export class EquipmentAppearance {
     }
 
     const setFilesToLoad = new Map<string, { file: string; slots: string[]; maxEnhance: number }>();
-    for (const slot of ARMOR_SLOTS) {
+    for (const slot of actor.config.costume ? [] : ARMOR_SLOTS) {
       const it = slotItems.get(slot);
       if (!it) continue;
       const setEntry = lib.sets?.[artisanArmor(it.setName)?.base ?? it.setName];
@@ -396,7 +397,7 @@ export class EquipmentAppearance {
     // Disable native equipment slots first (keep head/hair)
     for (const m of actor.outfit.meshes) {
       if (m.name === '__root__') continue;
-      if (m.name.startsWith('equip_head_') || m.name.startsWith('equip_hair_')) {
+      if (actor.config.costume || m.name.startsWith('equip_head_') || m.name.startsWith('equip_hair_')) {
         m.setEnabled(true);
         continue;
       }
@@ -751,7 +752,7 @@ export class EquipmentAppearance {
       wingContainer?.dispose();
     }
 
-    const armorTier = Math.max(...ARMOR_SLOTS.map(slot => actor.gear[slot]?.equipped ? slotItems.get(slot)?.enhanceLevel ?? 0 : 0));
+    const armorTier = Math.max(...ARMOR_SLOTS.map(slot => (actor.config.costume || actor.gear[slot]?.equipped) ? slotItems.get(slot)?.enhanceLevel ?? 0 : 0));
     if (upperSpine instanceof TransformNode && armorTier >= 6) this.attachItemSparkles(actor, upperSpine, armorTier);
 
     // Synchronize underlying body meshes

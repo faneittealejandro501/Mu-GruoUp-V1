@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { RECIPES } from '../src/game/content/recipes.ts';
 import { BESTIARY } from '../src/data/bestiary.ts';
 import { MU_SKILLS } from '../src/data/muSkillsAndClasses.ts';
+import { HERO_APPEARANCES, heroAppearancePath } from '../src/data/heroAppearances.ts';
 
 const publicRoot = new URL('../public/', import.meta.url);
 const root = new URL('../public/mugroup/', import.meta.url);
@@ -52,6 +53,43 @@ for (const cls of Object.keys(RECIPES)) {
     assert(outfit.nodes.some((n) => n.name === 'socket_rightHand'), `Weapon socket: ${c.id}`);
     await asset(c.model.replace('.glb', '.animaciones.json'));
   }
+}
+
+assert.equal(new Set(HERO_APPEARANCES.map(appearance => appearance.id)).size, HERO_APPEARANCES.length);
+let customCharacters = 0;
+for (const appearance of HERO_APPEARANCES) {
+  assert(RECIPES[appearance.classId], appearance.id);
+  const variantBytes = [];
+  for (const sex of ['male', 'female']) {
+    const path = heroAppearancePath(appearance.id, sex);
+    const doc = await glb(`${path}.glb`);
+    const file = new URL(`${path}.glb`, root);
+    const bytes = await readFile(file);
+    const info = await stat(file);
+    assert(info.size < 2 * 1024 * 1024, `Mobile budget: ${path}`);
+    variantBytes.push(bytes);
+    await asset(`${path}.png`);
+    assert.equal(doc.skins[0].joints.length, 30, path);
+    assert.equal(doc.extras.sex, sex, path);
+    assert(doc.nodes.some(node => node.name.startsWith('costume_') && node.skin === 0), path);
+    for (const clip of ['idle', 'run', 'attack', 'cast_release', 'hit', 'death']) {
+      assert(doc.animations.some(anim => anim.name === clip), `${path}/${clip}`);
+    }
+    const jsonLength = bytes.readUInt32LE(12);
+    const buffer = bytes.subarray(28 + jsonLength);
+    for (const node of doc.nodes.filter(node => node.name.startsWith('costume_'))) {
+      for (const primitive of doc.meshes[node.mesh].primitives) {
+        const weights = doc.accessors[primitive.attributes.WEIGHTS_0];
+        const start = doc.bufferViews[weights.bufferView].byteOffset;
+        for (let i = 0; i < weights.count; i++) {
+          const sum = Array.from({length: 4}, (_, j) => buffer.readFloatLE(start + 16 * i + 4 * j)).reduce((a, b) => a + b);
+          assert(Math.abs(sum - 1) < 1e-4, `${path}: invalid skinned vertex`);
+        }
+      }
+    }
+    customCharacters++;
+  }
+  assert(!variantBytes[0].equals(variantBytes[1]), appearance.id);
 }
 
 const equipment = await readJSON('equipo.json');
@@ -139,7 +177,7 @@ for (const model of Object.values(world.models)) {
 console.log(
   JSON.stringify(
     {
-      characters: 10,
+      characters: characters.length + customCharacters,
       skills,
       npcs: npcFiles.length,
       monsters: monsterFiles.length,

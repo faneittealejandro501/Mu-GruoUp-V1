@@ -1,3 +1,4 @@
+import { HERO_APPEARANCES, findHeroAppearance, heroAppearanceName, heroAppearancePath } from '../data/heroAppearances';
 import React, { useState } from 'react';
 import {
   Cloud,
@@ -47,11 +48,11 @@ interface ClassicLoginFlowProps {
     newPassword: string;
   }) => Promise<{ ok: boolean; message?: string; error?: string }>;
   onSelectCharacter: (charId: string) => void;
-  onCreateCharacter: (name: string, classType: HeroClass, sex: 'male' | 'female') => Promise<void>;
+  onCreateCharacter: (name: string, classType: HeroClass, sex: 'male' | 'female', appearanceId?: string) => Promise<void>;
   onEnterWorld: () => void;
   onLogoutAccount: () => void;
   onOpenApkCenter: () => void;
-  onPreviewClass: (classType: HeroClass, sex?: 'male' | 'female') => void;
+  onPreviewClass: (classType: HeroClass, sex?: 'male' | 'female', appearanceId?: string) => void;
 }
 
 const PRESET_QUESTIONS_1 = [
@@ -119,7 +120,9 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
   const [creatingChar, setCreatingChar] = useState(false);
   const [newCharName, setNewCharName] = useState('');
   const [newCharSex, setNewCharSex] = useState<'male' | 'female'>('male');
+  const [newAppearanceId, setNewAppearanceId] = useState('');
   const [newCharClass, setNewCharClass] = useState<HeroClass>('DK');
+  const newAppearance = findHeroAppearance(newAppearanceId, newCharClass);
 
   const clearFeedback = () => {
     setAuthError(null);
@@ -227,7 +230,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCharName.trim()) return;
-    await onCreateCharacter(newCharName.trim(), newCharClass, newCharSex);
+    await onCreateCharacter(newCharName.trim(), newCharClass, newCharSex, newAppearance?.id);
     setNewCharName('');
     setCreatingChar(false);
   };
@@ -298,7 +301,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
                 fontSize="12"
                 letterSpacing="3"
               >
-                MUNDO ABIERTO · 10 VARIANTES 3D
+                MUNDO ABIERTO · {(MU_CLASSES.length + HERO_APPEARANCES.length) * 2} VARIANTES 3D
               </text>
             </svg>
           </div>
@@ -663,7 +666,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
                 <button
                   onClick={() => {
                     setCreatingChar(true);
-                    onPreviewClass(newCharClass, newCharSex);
+                    onPreviewClass(newCharClass, newCharSex, newAppearance?.id);
                   }}
                   className="min-h-[38px] px-3 rounded-lg bg-amber-600/20 border border-amber-500/60 hover:bg-amber-600/30 text-amber-200 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
                 >
@@ -677,12 +680,13 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
               <div className="space-y-2 max-h-[240px] overflow-y-auto mu-scroll">
                 {characters.length === 0 ? (
                   <div className="p-4 rounded-lg bg-[#090d16] border border-slate-800 text-xs text-slate-400 text-center">
-                    Tu cuenta nueva aún no tiene personajes. Toca "Crear Personaje" para elegir entre BK, Mago, Elfa, DL o MG.
+                    Tu cuenta nueva aún no tiene personajes. Toca "Crear Personaje" para elegir una clase y una apariencia.
                   </div>
                 ) : (
                   characters.map((ch) => {
                     const clsMeta = MU_CLASSES.find((m) => m.id === ch.classType);
                     const isSelected = ch.id === selectedCharId;
+                    const look = findHeroAppearance(ch.appearanceId, ch.classType);
                     return (
                       <button
                         key={ch.id}
@@ -696,7 +700,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
                         <div>
                           <div className="text-sm font-bold text-slate-100">{ch.name}</div>
                           <div className="text-xs text-slate-400 font-mono-tabular">
-                            {clsMeta?.name || ch.classType} · {ch.sex === 'female' ? 'Femenino' : 'Masculino'} · Nv.{ch.level} · {ch.isSynced ? 'Sync OK' : 'Local'}
+                            {look ? heroAppearanceName(look, ch.sex) : clsMeta?.name ?? ch.classType} · {ch.sex === 'female' ? 'Femenino' : 'Masculino'} · Nv.{ch.level} · {ch.isSynced ? 'Sync OK' : 'Local'}
                           </div>
                         </div>
                         <span className="text-xs font-mono-tabular text-amber-300">
@@ -719,6 +723,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
                       type="button"
                       onClick={() => {
                         setNewCharClass(cls.id);
+                        setNewAppearanceId('');
                         onPreviewClass(cls.id, newCharSex);
                       }}
                       className={`p-2.5 rounded-lg border text-left cursor-pointer ${
@@ -732,10 +737,33 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
                     </button>
                   ))}
                 </div>
+                <div className="flex items-center gap-3">
+                  <label className="flex-1 text-xs text-amber-200">
+                    Apariencia
+                    <select value={newAppearanceId} onChange={event => {
+                      const appearance = findHeroAppearance(event.target.value);
+                      const cls = appearance?.classId ?? newCharClass;
+                      setNewAppearanceId(appearance?.id ?? '');
+                      setNewCharClass(cls);
+                      onPreviewClass(cls, newCharSex, appearance?.id);
+                    }} className="block w-full min-h-[42px] mt-1 rounded border border-slate-600 bg-[#080b12] px-2">
+                      <option value="">Original de la clase</option>
+                      {HERO_APPEARANCES.map(appearance => (
+                        <option key={appearance.id} value={appearance.id}>{heroAppearanceName(appearance, newCharSex)} · {appearance.classId}</option>
+                      ))}
+                    </select>
+                  </label>
+                  {newAppearance && <img
+                    src={`./mugroup/${heroAppearancePath(newAppearance.id, newCharSex)}.png`}
+                    alt={`${heroAppearanceName(newAppearance, newCharSex)} · ${newCharSex === 'female' ? 'Femenino' : 'Masculino'}`}
+                    width={54} height={72}
+                    className="h-[72px] w-[54px] rounded border border-amber-500/50 object-cover"
+                  />}
+                </div>
                 <fieldset className="flex gap-2" aria-label="Variante del personaje">
                   {(['male', 'female'] as const).map(sex => <button key={sex} type="button"
                     aria-pressed={newCharSex === sex}
-                    onClick={() => { setNewCharSex(sex); onPreviewClass(newCharClass, sex); }}
+                    onClick={() => { setNewCharSex(sex); onPreviewClass(newCharClass, sex, newAppearance?.id); }}
                     className={`flex-1 min-h-[42px] rounded border ${newCharSex === sex ? 'border-amber-400 bg-amber-900/40' : 'border-slate-600'}`}>
                     {sex === 'male' ? 'Masculino' : 'Femenino'}
                   </button>)}

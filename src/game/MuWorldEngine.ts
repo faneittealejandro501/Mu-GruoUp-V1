@@ -481,8 +481,9 @@ export class MuWorldEngine {
     classType: HeroClass,
     equippedItems: MuItem[],
     sex: 'male' | 'female' = 'male',
+    appearanceId?: string,
   ): Promise<void> {
-    const actor = await this.flyff.setActor(classType, sex, equippedItems);
+    const actor = await this.flyff.setActor(classType, sex, equippedItems, appearanceId);
     if (actor && !this.disposed) {
       actor.root.parent = this.heroRoot;
       actor.root.position.set(0, 0, 0);
