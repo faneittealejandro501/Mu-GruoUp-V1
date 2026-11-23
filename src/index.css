@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@layer base {
+  html,
+  body,
+  #root {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: #0c1018;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+}
+
+.font-display {
+  font-family: 'Cinzel', Georgia, serif;
+}
+
+.font-mono-tabular {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.z-15 {
+  z-index: 15;
+}
+
+.mu-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.mu-scroll::-webkit-scrollbar-track {
+  background: rgba(12, 16, 24, 0.7);
+}
+
+.mu-scroll::-webkit-scrollbar-thumb {
+  background: rgba(217, 119, 6, 0.45);
+  border-radius: 9999px;
+}
+
+.mu-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(245, 158, 11, 0.75);
+}
