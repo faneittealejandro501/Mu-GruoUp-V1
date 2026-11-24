@@ -1,5 +1,5 @@
 import { WingRig } from './WingRig';
-import { artisanArmor, artisanWeapon, AURORA_WING_NAME } from '../../data/artisanEquipment';
+import { setArmament, artisanArmor, artisanWeapon, AURORA_WING_NAME } from '../../data/artisanEquipment';
 import { buildArtisanWeapon } from './ArtisanWeapon';
 import {
   AbstractMesh,
@@ -8,7 +8,6 @@ import {
   Color3,
   Color4,
   Material,
-  Matrix,
   Mesh,
   Node,
   ParticleSystem,
@@ -136,21 +135,11 @@ export function detectWingEvoTier(wingItem?: MuItem | null): 1 | 2 | 3 | 4 {
   return 1;
 }
 
-/**
- * Progressive wingspan scale matching prompt rules:
- * Evo 1 = 1.0x reference size, Evo 2 = 2.0x Evo 1, Evo 3 = 3.0x Evo 2 (6.0x Evo 1), Evo 4 > Evo 3 (7.5x Evo 1).
- */
-export function getWingEvoScaleFactor(tier: 1 | 2 | 3 | 4): number {
-  switch (tier) {
-    case 1:
-      return 1.0;
-    case 2:
-      return 2.0;
-    case 3:
-      return 6.0;
-    case 4:
-      return 7.5;
-  }
+// Soul upgrades change span independently of the model's evolution family.
+export function wingSpanFactor(level: number): number {
+  if (level <= 6) return 1;
+  if (level <= 9) return 1 + (level - 6) / 3;
+  return 2 + Math.min(4, level - 9) / 4;
 }
 
 function getEnhanceVisualSpec(enhanceLevel: number): {
@@ -184,6 +173,12 @@ function applyEnhanceGlow(mesh: AbstractMesh, enhanceLevel: number, color?: numb
   const applyToMat = (mat: Material): Material => {
     const cloned = mat.clone(`${mat.name}_enh_${enhanceLevel}_${Math.random().toString(36).slice(2, 6)}`);
     if (!cloned) return mat;
+    // Keep leather, steel and feathers distinct underneath the upgrade shimmer.
+    const signature = mesh.name + mat.name;
+    let hue = 0;
+    for (const ch of signature) hue = (hue * 31 + ch.charCodeAt(0)) % 360;
+    const highlight = color === undefined ? Color3.FromHSV(hue, 0.48, 0.95)
+      : Color3.FromHexString('#' + color.toString(16).padStart(6, '0'));
     if (color !== undefined) {
       const tint = Color3.FromHexString('#' + color.toString(16).padStart(6, '0'));
       if (cloned instanceof PBRMaterial) cloned.albedoColor = Color3.Lerp(Color3.White(), tint, 0.65);
@@ -191,10 +186,10 @@ function applyEnhanceGlow(mesh: AbstractMesh, enhanceLevel: number, color?: numb
     }
     mesh.onDisposeObservable.addOnce(() => cloned.dispose(false, false));
     if ('emissiveColor' in cloned) {
-      (cloned as StandardMaterial).emissiveColor = spec.color.scale(spec.emissive);
+      (cloned as StandardMaterial).emissiveColor = Color3.Lerp(highlight, spec.color, 0.15).scale(spec.emissive * 0.24);
     }
     if ('specularColor' in cloned) {
-      (cloned as StandardMaterial).specularColor = spec.color.scale(spec.specular);
+      (cloned as StandardMaterial).specularColor = highlight.scale(spec.specular * 0.6);
     }
     return cloned;
   };
@@ -344,9 +339,9 @@ export class EquipmentAppearance {
     const offhandItem = slotItems.get('offhand');
     const wingItem = slotItems.get('wings');
 
-    const weaponFile = weaponItem ? lib.weapons?.[weaponItem.name] : undefined;
-    const artisan = artisanWeapon(weaponItem?.name);
-    const offhandFile = offhandItem ? lib.weapons?.[offhandItem.name] : undefined;
+    const weaponFile = weaponItem ? setArmament(weaponItem.name) ?? lib.weapons?.[weaponItem.name] : undefined;
+    const artisan = weaponFile ? undefined : artisanWeapon(weaponItem?.name);
+    const offhandFile = offhandItem ? setArmament(offhandItem.name) ?? lib.weapons?.[offhandItem.name] : undefined;
     const wingFile = wingItem
       ? lib.wings?.[wingItem.name] ?? getAdminConfigSync().items.wingCatalog?.find((w: { name: string }) => w.name === wingItem.name)?.glb ?? (wingItem.name === AURORA_WING_NAME ? 'equipo/wing_mugroup_feather.glb' : undefined)
       : undefined;
@@ -522,42 +517,9 @@ export class EquipmentAppearance {
       const tag = `weapon:${weaponFile}`;
       const enh = weaponItem?.enhanceLevel ?? 0;
       const isBow = /bow/i.test(weaponFile);
-      const isStaff = /sta/i.test(weaponFile);
-      const isWand = /wan/i.test(weaponFile);
-      const targetHand = isBow ? leftSocket : rightSocket;
-
-      actor.root.computeWorldMatrix(true);
-      let invHandToActorRot = Quaternion.Identity();
-      if (targetHand instanceof TransformNode || targetHand instanceof AbstractMesh) {
-        targetHand.computeWorldMatrix(true);
-        const relMat = Matrix.Invert(targetHand.getWorldMatrix()).multiply(actor.root.getWorldMatrix());
-        const rot = new Quaternion();
-        relMat.decompose(undefined, rot, undefined);
-        invHandToActorRot = rot;
-      }
-
-      const gripNode = new TransformNode(`weapon_grip_${Date.now()}`, this.scene);
-      gripNode.parent = targetHand;
-      gripNode.position.set(0, 0, 0);
-      gripNode.rotationQuaternion = invHandToActorRot;
-
-      const weaponAlign = new TransformNode(`weapon_align_${Date.now()}`, this.scene);
-      weaponAlign.parent = gripNode;
-      if (isBow) {
-        weaponAlign.position.set(-0.04, 0.04, 0.02);
-        weaponAlign.rotation.set(0, 0, 0);
-      } else if (isStaff) {
-        // Point staff tip forward (+Z) and upward (+Y), holding bottom third in palm
-        weaponAlign.position.set(0.10, 0.06, 0.36);
-        weaponAlign.rotation.set(-0.45, -Math.PI / 2, 0);
-      } else if (isWand) {
-        weaponAlign.position.set(0.08, 0.04, 0.22);
-        weaponAlign.rotation.set(-0.35, -Math.PI / 2, 0);
-      } else {
-        // Swords/axes angled cleanly forward and upward from right palm
-        weaponAlign.position.set(0.08, 0.04, 0.14);
-        weaponAlign.rotation.set(-0.35, -Math.PI / 2, 0);
-      }
+      // The source CHR already stores the grip transform in the hand socket.
+      // Baked outfit weapons use the same socket with identity local transform.
+      const weaponAlign = isBow ? leftSocket : rightSocket;
 
       let primaryMesh: AbstractMesh | null = null;
       for (const m of container.meshes) {
@@ -574,7 +536,7 @@ export class EquipmentAppearance {
         m.skeleton = null;
         applyEnhanceGlow(m, enh);
         m.isPickable = false;
-        m.metadata = { ...(m.metadata || {}), equipmentFile: tag, dynamicGear: true, gearSlot: 'weapon', gripNode };
+        m.metadata = { ...(m.metadata || {}), equipmentFile: tag, dynamicGear: true, gearSlot: 'weapon' };
         m.setEnabled(true);
         actor.outfit.meshes.push(m);
         actor.gear.weapon.meshes.push(m);
@@ -582,7 +544,7 @@ export class EquipmentAppearance {
       }
 
       if (primaryMesh && enh >= 6) {
-        this.attachItemSparkles(actor, weaponAlign, enh);
+        if (weaponAlign instanceof TransformNode) this.attachItemSparkles(actor, weaponAlign, enh);
       }
 
       actor.gear.weapon.equipped = true;
@@ -615,7 +577,7 @@ export class EquipmentAppearance {
         m.parent = targetSocket;
         m.position.set(0, 0, 0);
         m.rotationQuaternion = null;
-        m.rotation.set(0, isLeftWeapon ? -0.52 : 0, 0);
+        m.rotation.set(0, 0, 0);
         m.scaling.set(1, 1, 1);
         m.skeleton = null;
         applyEnhanceGlow(m, enh);
@@ -636,7 +598,7 @@ export class EquipmentAppearance {
       container.addAllToScene();
       const tag = `wings:${wingFile}`;
       const evoTier = detectWingEvoTier(wingItem);
-      const evoFactor = getWingEvoScaleFactor(evoTier);
+      const evoFactor = wingSpanFactor(wingItem?.enhanceLevel ?? 0);
       actor.wingScaleMultiplier = evoFactor;
 
       // Support large bone counts on OpenMU wings (up to 76 bones) safely across WebGL GPUs
@@ -652,7 +614,7 @@ export class EquipmentAppearance {
       actor.wingSocket = wingSocket;
       actor.wingRig = new WingRig(actor.root, wingSocket, upperSpine, torso);
 
-      const isMuWing = wingFile.includes('wing_mu');
+      const isMuWing = /wing_mu_/.test(wingFile);
       const baseName = wingFile.split('/').pop() || wingFile;
       // Calibrated local alignment & measured deformed span per wing family so Evo 1 = ~1.50m wingspan
       let alignRot = new Vector3(0, 0, 0);
@@ -699,7 +661,7 @@ export class EquipmentAppearance {
         else rawAnimatedSpan = 2.60;
       }
 
-      const normalizedBase = Math.min(1.35, Math.max(0.32, 1.50 / rawAnimatedSpan));
+      const normalizedBase = 1.15 / rawAnimatedSpan;
       const finalScale = normalizedBase * evoFactor;
 
       const wingBackAnchor = new TransformNode(`wing_back_anchor_${Date.now()}`, this.scene);
@@ -707,7 +669,7 @@ export class EquipmentAppearance {
       wingBackAnchor.position.set(0, 0, 0);
       // Keep the documented Evo wingspan in X/Z. Tall or downward-facing
       // models need a vertical fit to keep their tips clear of the boots.
-      wingBackAnchor.scaling.set(finalScale, normalizedBase * Math.min(evoFactor * verticalFit, 2.4), finalScale);
+      wingBackAnchor.scaling.set(finalScale, finalScale * verticalFit, finalScale);
 
       const wingAlign = new TransformNode(`wing_align_${Date.now()}`, this.scene);
       wingAlign.parent = wingBackAnchor;
@@ -782,7 +744,7 @@ export class EquipmentAppearance {
         light.parent = wingSocket;
         light.diffuse = col;
         light.specular = col;
-        light.intensity = 0.65 + evoTier * 0.45;
+        light.intensity = 0.12 + evoTier * 0.07;
         light.range = 4.5 + evoTier * 3.0;
         actor.wingLight = light;
       } catch {
@@ -883,11 +845,9 @@ export class EquipmentAppearance {
     const keptMeshes: AbstractMesh[] = [];
     for (const m of actor.outfit.meshes) {
       if (m.metadata?.dynamicGear) {
-        const gripNode = m.metadata?.gripNode as TransformNode | undefined;
         try {
           m.setEnabled(false);
           m.dispose(false, false);
-          gripNode?.dispose();
         } catch {
           // ignore
         }

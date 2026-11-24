@@ -149,8 +149,7 @@ for (const f of npcFiles) await glb(`npcs/${f}`);
 
 const monsterFiles = (await readdir(fileURLToPath(new URL('monstruos/', root)))).filter((f) => f.endsWith('.glb'));
 assert(new Set(BESTIARY.map(species => species.id)).size >= 40, 'Expected at least 40 original species');
-assert(monsterFiles.length >= 20, 'Missing integrated monster GLBs');
-for (const f of monsterFiles) await glb(`monstruos/${f}`);
+assert(monsterFiles.length >= 60, 'Missing integrated monster GLBs');
 
 const world = await readJSON('mundo/mundo.json');
 assert.equal(world.sizeMeters, 3072);
@@ -174,6 +173,33 @@ for (const model of Object.values(world.models)) {
   }
 }
 
+// Validate renderable animation data and the artwork required by the inventory and HUD.
+for (const file of monsterFiles) {
+  const doc = await glb('monstruos/' + file);
+  const bones = new Set(doc.skins?.flatMap(skin=>skin.joints.flatMap(i=>doc.nodes[i].children || [])));
+  assert(doc.skins?.length && doc.nodes.some((n,i)=>n.mesh !== undefined && (n.skin !== undefined || bones.has(i))),file);
+  for (const clip of ['stand','walk','atk1']) assert(doc.animations.some(a=>a.name===clip && a.channels.length),file+': '+clip);
+}
+for (const c of characters) {
+  const doc=await glb(c.model);
+  for (const clip of [...Array.from({length:6},(_,i)=>'power_'+i),'flight']) assert(doc.animations.some(a=>a.name===clip && a.channels.length),c.id+': '+clip);
+}
+const loadData = async name => JSON.parse(await readFile(new URL('../src/data/'+name+'.json',import.meta.url),'utf8'));
+const families=await loadData('setFamilies'), arms=await loadData('setArmaments');
+for (const [cls,sets] of Object.entries(families)) {
+  assert.equal(new Set(sets).size,10);
+  for (const family of sets) for (const sex of ['male','female']) {
+    await asset('equipo/'+family+'_'+sex+'.glb');
+    for (const slot of ['armor','pants','helm','boots','gloves']) await asset('ui/items/'+family+'_'+sex+'-'+slot+'.webp');
+  }
+  for (let i=0;i<6;i++) await asset('ui/skill-'+cls+'-'+i+'.webp');
+}
+for (const files of Object.values(arms)) {
+  assert.equal(new Set(files).size,10);
+  for (const file of files) { await asset(file);await asset('ui/items/'+file.split('/').pop().replace('.glb','.webp')); }
+}
+for (const key of await loadData('creatureVoices')) await asset('audio/voces/'+key+'.ogg');
+for (const id of ['red','gold','medusa','selupan','kundum']) await asset('ui/event-'+id+'.webp');
 console.log(
   JSON.stringify(
     {

@@ -6,25 +6,21 @@
     "Espada del Dragón": "equipo/item_weaswofireis.glb",
     "Espada del Arcángel": "equipo/item_weaswoangel.glb",
     "Bone Blade (Hoja Ósea)": "equipo/item_weaswobloody.glb",
-
     "Vara de Madera Arcana": "equipo/item_weastawiz.glb",
     "Skull Staff (+0)": "equipo/item_weastawiz.glb",
     "Báculo Legendario": "equipo/item_weastawiz.glb",
     "Báculo de Kundun": "equipo/item_weastaancient.glb",
     "Báculo de Platina": "equipo/item_weastacrystal.glb",
-
     "Arco Corto de Madera": "equipo/item_weabowwoode.glb",
     "Short Bow (+0)": "equipo/item_weabowwoode.glb",
     "Arco Celestial": "equipo/item_weabowwoode.glb",
     "Ballesta de Cristal": "equipo/item_weabowcrystal.glb",
     "Arco Albatros": "equipo/item_weabowangel.glb",
-
     "Cetro de Hierro Inicial": "equipo/item_weawanmisty.glb",
     "Battle Scepter (+0)": "equipo/item_weawanmisty.glb",
     "Cetro del Señor Oscuro": "equipo/item_weawanmisty.glb",
     "Cetro Solemnidad": "equipo/item_weawandivine.glb",
     "Cetro Solemnidad Real": "equipo/item_weawanangel.glb",
-
     "Gladius de Aprendiz": "equipo/item_weaswocomet.glb",
     "Gladius (+0)": "equipo/item_weaswocomet.glb",
     "Daga Rúnica Izquierda": "equipo/item_weaswobluesh.glb",
@@ -32,7 +28,6 @@
     "Espada Relámpago (Izq)": "equipo/item_weaswocomet.glb",
     "Espada Dancer Oscura": "equipo/item_weaswobluesh.glb",
     "Espada Bastarda Rúnica": "equipo/item_weaswolegendg.glb",
-
     "Broquel de Cuero": "equipo/item_armshiscale.glb",
     "Round Shield": "equipo/item_armshiscale.glb",
     "Tomo Protector": "equipo/item_armshistar.glb",
@@ -141,6 +136,186 @@
     "Volcano": {
       "male": "equipo/Mer02_male.glb",
       "female": "equipo/Mer02_female.glb"
+    },
+    "Kin02": {
+      "male": "equipo/Kin02_male.glb",
+      "female": "equipo/Kin02_female.glb"
+    },
+    "Mag01": {
+      "male": "equipo/Mag01_male.glb",
+      "female": "equipo/Mag01_female.glb"
+    },
+    "Mer01": {
+      "male": "equipo/Mer01_male.glb",
+      "female": "equipo/Mer01_female.glb"
+    },
+    "Bla05": {
+      "male": "equipo/Bla05_male.glb",
+      "female": "equipo/Bla05_female.glb"
+    },
+    "Mer02": {
+      "male": "equipo/Mer02_male.glb",
+      "female": "equipo/Mer02_female.glb"
+    },
+    "Mag04": {
+      "male": "equipo/Mag04_male.glb",
+      "female": "equipo/Mag04_female.glb"
+    },
+    "Rin03": {
+      "male": "equipo/Rin03_male.glb",
+      "female": "equipo/Rin03_female.glb"
+    },
+    "Bla02": {
+      "male": "equipo/Bla02_male.glb",
+      "female": "equipo/Bla02_female.glb"
+    },
+    "Acr03": {
+      "male": "equipo/Acr03_male.glb",
+      "female": "equipo/Acr03_female.glb"
+    },
+    "Jst03": {
+      "male": "equipo/Jst03_male.glb",
+      "female": "equipo/Jst03_female.glb"
+    },
+    "Mag02": {
+      "male": "equipo/Mag02_male.glb",
+      "female": "equipo/Mag02_female.glb"
+    },
+    "Rin01": {
+      "male": "equipo/Rin01_male.glb",
+      "female": "equipo/Rin01_female.glb"
+    },
+    "Psy03": {
+      "male": "equipo/Psy03_male.glb",
+      "female": "equipo/Psy03_female.glb"
+    },
+    "Ele04": {
+      "male": "equipo/Ele04_male.glb",
+      "female": "equipo/Ele04_female.glb"
+    },
+    "Acr01": {
+      "male": "equipo/Acr01_male.glb",
+      "female": "equipo/Acr01_female.glb"
+    },
+    "Rin04": {
+      "male": "equipo/Rin04_male.glb",
+      "female": "equipo/Rin04_female.glb"
+    },
+    "Acr02": {
+      "male": "equipo/Acr02_male.glb",
+      "female": "equipo/Acr02_female.glb"
+    },
+    "Kin04": {
+      "male": "equipo/Kin04_male.glb",
+      "female": "equipo/Kin04_female.glb"
+    },
+    "Mag03": {
+      "male": "equipo/Mag03_male.glb",
+      "female": "equipo/Mag03_female.glb"
+    },
+    "Bla01": {
+      "male": "equipo/Bla01_male.glb",
+      "female": "equipo/Bla01_female.glb"
+    },
+    "Kin05": {
+      "male": "equipo/Kin05_male.glb",
+      "female": "equipo/Kin05_female.glb"
+    },
+    "Mag05": {
+      "male": "equipo/Mag05_male.glb",
+      "female": "equipo/Mag05_female.glb"
+    },
+    "Rin02": {
+      "male": "equipo/Rin02_male.glb",
+      "female": "equipo/Rin02_female.glb"
+    },
+    "Mer04": {
+      "male": "equipo/Mer04_male.glb",
+      "female": "equipo/Mer04_female.glb"
+    },
+    "Jst01": {
+      "male": "equipo/Jst01_male.glb",
+      "female": "equipo/Jst01_female.glb"
+    },
+    "Psy01": {
+      "male": "equipo/Psy01_male.glb",
+      "female": "equipo/Psy01_female.glb"
+    },
+    "Ele01": {
+      "male": "equipo/Ele01_male.glb",
+      "female": "equipo/Ele01_female.glb"
+    },
+    "Ele02": {
+      "male": "equipo/Ele02_male.glb",
+      "female": "equipo/Ele02_female.glb"
+    },
+    "Psy04": {
+      "male": "equipo/Psy04_male.glb",
+      "female": "equipo/Psy04_female.glb"
+    },
+    "Mer05": {
+      "male": "equipo/Mer05_male.glb",
+      "female": "equipo/Mer05_female.glb"
+    },
+    "Jst02": {
+      "male": "equipo/Jst02_male.glb",
+      "female": "equipo/Jst02_female.glb"
+    },
+    "Jst05": {
+      "male": "equipo/Jst05_male.glb",
+      "female": "equipo/Jst05_female.glb"
+    },
+    "Mer03": {
+      "male": "equipo/Mer03_male.glb",
+      "female": "equipo/Mer03_female.glb"
+    },
+    "Kin03": {
+      "male": "equipo/Kin03_male.glb",
+      "female": "equipo/Kin03_female.glb"
+    },
+    "Kin01": {
+      "male": "equipo/Kin01_male.glb",
+      "female": "equipo/Kin01_female.glb"
+    },
+    "Jst04": {
+      "male": "equipo/Jst04_male.glb",
+      "female": "equipo/Jst04_female.glb"
+    },
+    "Bla04": {
+      "male": "equipo/Bla04_male.glb",
+      "female": "equipo/Bla04_female.glb"
+    },
+    "Acr04": {
+      "male": "equipo/Acr04_male.glb",
+      "female": "equipo/Acr04_female.glb"
+    },
+    "Ele05": {
+      "male": "equipo/Ele05_male.glb",
+      "female": "equipo/Ele05_female.glb"
+    },
+    "Acr05": {
+      "male": "equipo/Acr05_male.glb",
+      "female": "equipo/Acr05_female.glb"
+    },
+    "Psy02": {
+      "male": "equipo/Psy02_male.glb",
+      "female": "equipo/Psy02_female.glb"
+    },
+    "Ele03": {
+      "male": "equipo/Ele03_male.glb",
+      "female": "equipo/Ele03_female.glb"
+    },
+    "Rin05": {
+      "male": "equipo/Rin05_male.glb",
+      "female": "equipo/Rin05_female.glb"
+    },
+    "Psy05": {
+      "male": "equipo/Psy05_male.glb",
+      "female": "equipo/Psy05_female.glb"
+    },
+    "Bla03": {
+      "male": "equipo/Bla03_male.glb",
+      "female": "equipo/Bla03_female.glb"
     }
   },
   "rights": "Original resource notices in licencias/"

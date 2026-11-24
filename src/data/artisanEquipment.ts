@@ -1,3 +1,5 @@
+import families from './setFamilies.json' with {type:'json'};
+import armaments from './setArmaments.json' with {type:'json'};
 import type { HeroClass, ShopItemDef, ItemSlot, NpcDef } from '../types/game.ts';
 import type { MonsterElement } from './bestiary.ts';
 
@@ -21,6 +23,8 @@ export type ArtisanWeapon = {
 };
 
 const weapons = new Map<string, ArtisanWeapon>();
+const armamentPaths = new Map<string,string>();
+export const setArmament = (name: string) => armamentPaths.get(name);
 const armor = new Map<string, { base: string; color: number }>();
 export const ARTISAN_CATALOG: ShopItemDef[] = [];
 const armorSlots: [ItemSlot,string][] = [
@@ -46,11 +50,11 @@ for (const [c, classType] of classes.entries()) {
       });
     }
   }
-  const moods = ['del Alba', 'del Viento', 'de la Guardia', 'de la Vigilia', 'del Coral', 'del Sol', 'de la Escarcha', 'del Ocaso'];
+  const moods = ['del Alba', 'del Viento', 'de la Guardia', 'de la Vigilia', 'del Coral', 'del Sol', 'de la Escarcha', 'del Ocaso', 'del Eclipse', 'de las Estrellas'];
   for (let i = 0; i < moods.length; i++) {
     const guild = i < 4 ? 'Madrigal' : 'Lorencia';
     const setName = `${classType} ${moods[i]} · ${guild}`;
-    armor.set(setName, { base: spec.sets[i % spec.sets.length], color: finishes[(c*3+i*2)%finishes.length][1] });
+    armor.set(setName, { base: families[classType][i], color: finishes[(c*3+i*2)%finishes.length][1] });
     for (const [slot, piece] of armorSlots) {
       const heavy = slot === 'armor' || slot === 'pants';
       ARTISAN_CATALOG.push({
@@ -64,11 +68,13 @@ for (const [c, classType] of classes.entries()) {
     const id = `artisan-set-${classType.toLowerCase()}-${i}`;
     const [finish, trim, element] = finishes[(c * 3 + i * 2) % finishes.length];
     const main = `${spec.weapon} ${setName}`;
+    armamentPaths.set(main, armaments[classType][i]);
+    armamentPaths.set('Escudo '+setName, armaments.shield[i]);
     weapons.set(main, { key: id, label: finish, classType, metal: 0xaabbd0, trim, element, style: i % 5, length: 0.9 + i * 0.035 });
-    for (const [slot, label] of [['weapon', spec.weapon], ['pendant', 'Collar'], ['ring1', 'Anillo'], ['ring2', 'Sello']] as const) {
+    for (const [slot, label] of [['weapon', spec.weapon], ['shield','Escudo'], ['pendant', 'Collar'], ['ring1', 'Anillo'], ['ring2', 'Sello']] as const) {
       ARTISAN_CATALOG.push({
         id: `${id}-${slot}`, slot, name: `${label} ${setName}`, setName,
-        category: slot === 'weapon' ? 'weapon' : 'jewelry', rarity: i >= 3 ? 'excellent' : 'normal',
+        category: slot === 'weapon' ? 'weapon' : slot === 'shield' ? 'armor' : 'jewelry', rarity: i >= 3 ? 'excellent' : 'normal',
         enhanceLevel: i, minDmg: slot === 'weapon' ? 14 + i * 5 : 0,
         maxDmg: slot === 'weapon' ? 22 + i * 7 : 0, defense: slot === 'weapon' ? 0 : 3 + i * 2,
         magicPower: 3 + i, luck: false, excellentOpt: '', zenCost: 1300 + i * 1700,

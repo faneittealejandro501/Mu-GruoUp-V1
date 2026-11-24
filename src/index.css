@@ -66,3 +66,25 @@
 @media(prefers-reduced-motion:reduce){.realm-load progress:indeterminate{animation:none}}
 @media(orientation:portrait){.realm-auth{max-width:100%;margin:28vh 0 0}.realm-login{background-position:70% top;background-size:auto 73vh;background-repeat:no-repeat;background-color:#101629}.realm-roster{grid-template-columns:1fr;grid-template-rows:1fr auto auto}.realm-turn{grid-column:1;grid-row:1}.realm-controls{grid-row:2;max-height:38vh}.realm-enter{grid-row:3}.realm-load>div{margin-top:50vh;width:80vw}}
 @media(orientation:portrait){.realm-canvas{height:52vh;top:4vh}}
+
+.realm-button, button[data-testid^="hud-"].rounded-full {
+  border-color: #b78b4d;
+  background-image: linear-gradient(155deg, #e9d29a36, transparent 32%, #20120b61 77%, #b9965d30);
+  box-shadow: inset 0 0 0 2px #352517bf, inset 0 0 0 3px #d6bd815c, 0 2px 5px #170e098c;
+  font-family: Georgia, serif;
+}
+.realm-button, .realm-board {
+  background-color: #201b18; color: #f1ddba; border: 1px solid #927047; border-radius: 6px;
+}
+.kingdom-inventory {
+  background: linear-gradient(115deg,#1f1814ee,#0e1320f7 53%,#221c16ed),url('/mugroup/ui/inventory-frame.webp') center/cover;
+  box-shadow: inset 0 0 0 2px #483525, inset 0 0 20px #120904, 0 12px 60px #000b;
+}
+
+.inventory-tray {
+  background: radial-gradient(ellipse at top, #443729a8, #14120fea 82%);
+  box-shadow: inset 0 0 10px #170e09b3;
+}
+.inventory-tray .grid button {
+  border-radius: 3px; box-shadow: inset 0 0 0 1px #c0a17329, inset 0 -5px 12px #0004;
+}

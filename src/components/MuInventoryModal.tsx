@@ -1,5 +1,6 @@
+import { ItemPortrait } from './ItemPortrait';
 import React, { useState } from 'react';
-import { Gem, Hammer, Shield, Sparkles, Sword, X } from 'lucide-react';
+import { Gem, Hammer, Sparkles, X } from 'lucide-react';
 import { getItemVisualSpec } from '../data/muWorldData';
 import type { ItemSlot, MuCharacter, MuItem } from '../types/game';
 
@@ -54,7 +55,7 @@ export const MuInventoryModal: React.FC<MuInventoryModalProps> = ({
   }
 
   const selectedItem = items.find((i) => i.id === selectedId) || items[0] || null;
-  const totalSlots = 24;
+  const totalSlots = Math.max(24, Math.ceil(backpackItems.length / 6) * 6);
 
   const getRarityStyle = (it: MuItem) => {
     if (it.rarity === 'ancient') return 'border-sky-400/90 bg-sky-950/60 text-sky-200';
@@ -63,16 +64,11 @@ export const MuInventoryModal: React.FC<MuInventoryModalProps> = ({
     return 'border-amber-700/60 bg-[#181e2c] text-slate-100';
   };
 
-  const renderSlotIcon = (it: MuItem, size = 'w-3.5 h-3.5') => {
-    if (it.category === 'weapon') return <Sword className={`${size} text-amber-300`} />;
-    if (it.category === 'wings' || it.category === 'pet') return <Sparkles className={`${size} text-sky-300`} />;
-    if (it.category === 'jewelry') return <Gem className={`${size} text-emerald-300`} />;
-    return <Shield className={`${size} text-emerald-300`} />;
-  };
+  const renderSlotIcon = (it: MuItem) => <ItemPortrait item={it} sex={character.sex}/>;
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/80 p-2 sm:p-4">
-      <div className="w-full max-w-4xl max-h-[92vh] flex flex-col rounded-xl bg-[#0d111a] border-2 border-amber-700/80 shadow-2xl overflow-hidden">
+      <div className="kingdom-inventory w-full max-w-4xl max-h-[92vh] flex flex-col rounded-xl bg-[#0d111a] border-2 border-amber-700/80 shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2.5 bg-gradient-to-r from-[#231912] via-[#191d2b] to-[#121622] border-b border-amber-700/60">
           <div>
             <h2 className="font-display text-sm sm:text-base font-bold text-amber-300">
@@ -96,7 +92,7 @@ export const MuInventoryModal: React.FC<MuInventoryModalProps> = ({
 
         <div className="flex-1 overflow-y-auto mu-scroll p-3 sm:p-4 grid grid-cols-1 md:grid-cols-12 gap-4">
           {/* Left: 12-slot MU Paper-Doll */}
-          <div className="md:col-span-5 bg-[#090c14] border border-slate-800 rounded-lg p-3 flex flex-col justify-between">
+          <div className="md:col-span-5 inventory-tray border border-amber-900/60 rounded-lg p-3 flex flex-col justify-between">
             <div>
               <div className="text-[11px] font-semibold text-amber-300/90 mb-2 text-center">
                 Equipo + Joyería + Mascota ({character.classType})
@@ -171,9 +167,9 @@ export const MuInventoryModal: React.FC<MuInventoryModalProps> = ({
 
           {/* Right: 6x4 MU Grid + Selected Item Tooltip */}
           <div className="md:col-span-7 flex flex-col gap-3">
-            <div className="bg-[#090c14] border border-slate-800 rounded-lg p-3">
+            <div className="inventory-tray border border-amber-900/60 rounded-lg p-3">
               <div className="flex items-center justify-between text-[11px] text-slate-400 mb-2">
-                <span>Mochila (IndexedDB · {backpackItems.length} ítems guardados)</span>
+                <span>Mochila · {backpackItems.length} objetos</span>
                 <span>Toca un cuadro para equipar o forjar</span>
               </div>
               <div className="grid grid-cols-6 gap-1.5">

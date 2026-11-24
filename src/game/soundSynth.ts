@@ -1,3 +1,5 @@
+import creatureVoices from '../data/creatureVoices.json' with {type:'json'};
+const monsterVoices = new Set(creatureVoices);
 class MuSoundSynth {
   private ctx: AudioContext | null = null;
   private musicAudio: HTMLAudioElement | null = null;
@@ -317,6 +319,8 @@ class MuSoundSynth {
     const last = this.monsterSfxThrottle.get(throttleKey) ?? -Infinity;
     if (now - last < 750) return;
     this.monsterSfxThrottle.set(throttleKey, now);
+    const voice = base+'-'+event;
+    if (monsterVoices.has(voice)) { this.playUrl('./mugroup/audio/voces/'+voice+'.ogg',.65); return; }
     const heavy = ['bang', 'grrr', 'rockmuscle', 'clockwork', 'jackhammer'].includes(cleanName);
     const flying = ['aibatt', 'flybat', 'meteonyker'].includes(cleanName);
     const clip = event === 'die1' ? (heavy ? 'openmu/audio/mBullDie' : flying ? 'openmu/audio/mDrakanDie' : 'openmu/audio/mHoundDie')

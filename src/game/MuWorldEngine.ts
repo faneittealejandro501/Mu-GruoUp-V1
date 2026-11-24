@@ -1,4 +1,6 @@
+import creatureModels from '../data/creatureModels.json' with {type:'json'};
 import { flightHeight } from './content/WingRig';
+import { INVASIONS, invasionSites, invasionWindow, type Invasion } from '../data/worldInvasions';
 import { CAMP_SIZE, scatterCamps, SpawnGrid } from './encounters';
 import {
   AnimationGroup,
@@ -13,7 +15,7 @@ import {
   Mesh,
   MeshBuilder,
   NullEngine,
-  ParticleSystem,
+  ParticleSystem, PBRMaterial,
   Scene,
   SceneLoader,
   StandardMaterial,
@@ -75,7 +77,7 @@ export interface TargetMonsterInfo {
 
 export interface EngineCallbacks {
   onEquipmentWear?: (slot: ItemSlot, durability: number) => void;
-  onKillMonster?: (xp: number, zen: number) => void | Promise<void>;
+  onKillMonster?: (xp: number, zen: number, invasion?: Invasion) => void | Promise<void>;
   onPickupLoot?: (drop: LootDropInfo) => void | Promise<void>;
   onPlayerDamaged?: (rawAmount: number, isCrit: boolean) => void;
   onMonsterPowerHit?: (power: MonsterPower, damage: number) => void;
@@ -103,6 +105,7 @@ interface ActiveMonster {
   id: string;
   def: MonsterSpawnDef;
   glbFile: string;
+  invasion?: Invasion;
   scaledLevel: number;
   maxHp: number;
   hp: number;
@@ -169,28 +172,7 @@ const AVAILABLE_MONSTER_GLBS = [
   'monstruos/pukepuke.glb',
   'monstruos/rockmuscle.glb',
 ];
-const AVAILABLE_MONSTER_SET = new Set(AVAILABLE_MONSTER_GLBS);
-
-const MISSING_MONSTER_FALLBACK: Record<string, string> = {
-  'monstruos/tombstonebearer.glb': 'monstruos/skeldevil.glb',
-  'monstruos/dumbbull.glb': 'monstruos/rockmuscle.glb',
-  'monstruos/greemong.glb': 'monstruos/nautrepy.glb',
-  'monstruos/steelknight.glb': 'monstruos/antiquery.glb',
-  'monstruos/nyangnyang.glb': 'monstruos/pukepuke.glb',
-  'monstruos/mothbee.glb': 'monstruos/flybat.glb',
-  'monstruos/elderguard.glb': 'monstruos/clockwork.glb',
-  'monstruos/garbagepider.glb': 'monstruos/roachfl.glb',
-  'monstruos/peakyturtle.glb': 'monstruos/doridoma.glb',
-  'monstruos/flbyrigen.glb': 'monstruos/glaphan.glb',
-  'monstruos/popcrank.glb': 'monstruos/jackhammer.glb',
-  'monstruos/gigglebox.glb': 'monstruos/cardpuppet.glb',
-  'monstruos/driller.glb': 'monstruos/jackhammer.glb',
-  'monstruos/steamwalker.glb': 'monstruos/antiquery.glb',
-  'monstruos/zombiger.glb': 'monstruos/grrr.glb',
-  'monstruos/circusbear.glb': 'monstruos/bang.glb',
-  'monstruos/volt.glb': 'monstruos/lucifer.glb',
-  'monstruos/carrierbomb.glb': 'monstruos/mrpumpkin.glb',
-};
+const AVAILABLE_MONSTER_SET = new Set(creatureModels);
 
 const AVAILABLE_NPC_GLBS = new Set([
   'npcs/boboku.glb',
@@ -214,7 +196,6 @@ function resolveNpcGlb(raw?: string, role?: string): string {
 
 function resolveMonsterGlb(raw?: string, indexFallback = 0): string {
   if (raw && AVAILABLE_MONSTER_SET.has(raw)) return raw;
-  if (raw && AVAILABLE_MONSTER_SET.has(MISSING_MONSTER_FALLBACK[raw])) return MISSING_MONSTER_FALLBACK[raw];
   if (raw) {
     const lower = raw.toLowerCase();
     for (const candidate of AVAILABLE_MONSTER_GLBS) {
@@ -259,6 +240,7 @@ export class MuWorldEngine {
   private hoverOffset = 0;
   private wingPhase = 0;
   private wingLift = 0;
+  private openSky = 0;
   private heroRotY = Math.PI;
   private heroVelY = 0;
   private isGrounded = true;
@@ -276,6 +258,8 @@ export class MuWorldEngine {
 
   private monsters: ActiveMonster[] = [];
   private monsterGrid = new SpawnGrid<ActiveMonster>();
+  private eventMobs: ActiveMonster[] = [];
+  private eventKey = '';
   private loadedMonsters = new Set<ActiveMonster>();
   private monsterRoamLimit = 40;
   private monsterScan = 0;
@@ -455,7 +439,6 @@ export class MuWorldEngine {
     this.activeBonuses = bonuses;
   }
 
-  private combatHover = 0;
   public resizeView() { this.engine.resize(); }
   public rotatePreview(delta: number) {
     if (this.mode === 'character_select') this.camera.alpha -= delta * .013;
@@ -509,6 +492,7 @@ export class MuWorldEngine {
     this.comboUntil = 0;
     const map = getMapById(mapId);
     this.currentMap = map;
+    this.flyff.world.setCrater(map.id === 'crater_ceniza');
     const rules = getAdminConfigSync()['world-rules'];
     const mapKey = map.id === 'puerto_bruma' ? 'puerto' : map.id === 'crater_ceniza' ? 'ceniza' : map.id;
     const adminMap = rules.maps?.[map.id] || rules.maps?.[mapKey];
@@ -683,16 +667,9 @@ export class MuWorldEngine {
     const actor = this.flyff.actor;
     if (!actor) return skill.isBuff ? 'cast_release' : 'attack';
 
-    const hintMap: Record<HeroClass, string[]> = {
-      DK: ['skl_sklblddblarmpen', 'skl_sklblddswblddan', 'skl_sklblddblcross', 'skl_sklblddaxspring', 'skl_sklbldsuppor', 'skl_sklblddaxhawatt'],
-      DW: ['skl_sklpsypsychi01', 'skl_sklpsynolgy01', 'skl_sklelemulcasting01', 'skl_sklpsypsychi01', 'skl_sklassheacasting01', 'skl_sklpsysquare01'],
-      ELF: ['skl_sklknttswcharge', 'skl_sklknttwopwswng', 'skl_sklknttswethdvd', 'skl_sklknttaxpwstum', 'skl_sklrincure01', 'skl_sklrinheal01'],
-      DL: ['skl_skljstvatals', 'skl_skljstbackst', 'skl_skljsthfpeny', 'skl_sklblddblcross', 'skl_skljstsuppor', 'skl_skljstescape'],
-      MG: ['skl_sklmagswordwind01', 'skl_sklblddswblddan', 'skl_sklelefircasting01', 'skl_skleleelecasting01', 'skl_sklbldsuppor', 'skl_sklelemulcasting01'],
-    };
     const slotIdx = Math.max(0, Math.min(5, Number(skill.keyHint || 1) - 1));
-    const candidate = hintMap[cls]?.[slotIdx];
-    if (candidate && actor.hasClip(candidate)) return candidate;
+    const clip = 'power_'+slotIdx;
+    if (actor.hasClip(clip)) return clip;
     if ((skill.isBuff || cls === 'DW' || (cls === 'DL' && slotIdx >= 1) || (cls === 'MG' && slotIdx >= 2)) && actor.hasClip('cast_release')) return 'cast_release';
     return 'attack';
   }
@@ -708,7 +685,7 @@ export class MuWorldEngine {
 
     const clipName = this.resolveHeroSkillClip(skill);
     this.attackSwingTimer = this.flyff.actor?.playClip(clipName, false) || 0.48;
-    this.flyff.actor?.setCombatMotion(this.attackSwingTimer, skillIndex, !!skill.isBuff);
+    if (!clipName.startsWith('power_')) this.flyff.actor?.setCombatMotion(this.attackSwingTimer, skillIndex, !!skill.isBuff);
 
     const origin = new Vector3(this.heroX, this.heroY + this.hoverOffset + 0.9, this.heroZ);
     const forward = new Vector3(Math.sin(this.heroRotY), 0, Math.cos(this.heroRotY));
@@ -784,7 +761,7 @@ export class MuWorldEngine {
         isCrit,
       );
 
-      if (this.eventActive && mob.def.isBoss) {
+      if (this.eventActive && mob.def.isBoss && !mob.invasion) {
         this.callbacks.onBossHitInEvent?.(finalDmg);
       }
 
@@ -862,9 +839,21 @@ export class MuWorldEngine {
   }
 
   private handleMonsterDefeated(mob: ActiveMonster): void {
+    if (!mob.alive) return;
     mob.alive = false;
     this.playMonsterAnim(mob, 'death', false);
     this.playMonsterSound(mob, 'die1');
+    if (mob.invasion) {
+      const e = mob.invasion;
+      localStorage.setItem(mob.id,String(mob.respawnAt));
+      mob.respawnAt = Infinity; mob.strike = undefined;
+      void this.callbacks.onKillMonster?.(0,e.zen,e);
+      const pool = [...ITEM_BY_ID.values()].filter(i =>
+        ['helm','armor','pants','boots','gloves'].includes(i.slot) || (e.id !== 'red' && i.slot === 'weapon') ||
+        (e.id !== 'red' && e.id !== 'selupan' && i.slot === 'shield')).map(i=>i.id);
+      for (let i=0; i<e.pieces; i++) this.spawnLootDrop(mob.x+1.5*Math.cos(i*2.4),mob.z+1.5*Math.sin(i*2.4),0,true,pool);
+      return;
+    }
     const adminRespawn = Number(getAdminConfigSync().monsters?.respawnSeconds || 7);
     mob.strike = undefined;
     mob.respawnAt = this.flyff.worldClock + (mob.def.respawnSeconds ?? (mob.def.isBoss ? Math.max(18, adminRespawn * 2) : adminRespawn));
@@ -974,11 +963,12 @@ export class MuWorldEngine {
     container: AssetContainer,
     prefix: string,
     targetHeight: number,
+    ownMaterials = false,
   ): { root: TransformNode; animations: AnimationGroup[] } {
     const inst = container.instantiateModelsToScene(
       (n) => `${prefix}_${n}`,
       false,
-      { doNotInstantiate: false },
+      { doNotInstantiate: ownMaterials },
     );
     const root = new TransformNode(`${prefix}_root`, this.scene);
     let minY = Infinity;
@@ -1010,6 +1000,7 @@ export class MuWorldEngine {
       }
     }
 
+    root.onDisposeObservable.addOnce(()=>{ for (const skeleton of inst.skeletons) skeleton.dispose(); });
     return { root, animations: [...inst.animationGroups] };
   }
 
@@ -1047,6 +1038,7 @@ export class MuWorldEngine {
     }
     for (const l of this.loots) l.mesh.dispose();
     this.monsters = [];
+    this.eventMobs = []; this.eventKey = '';
     this.npcs = [];
     this.loots = [];
 
@@ -1246,7 +1238,37 @@ export class MuWorldEngine {
   }
 
   private nearMonsters(radius: number): Iterable<ActiveMonster> {
-    return this.monsterGrid.near(this.heroX, this.heroZ, radius + this.monsterRoamLimit);
+    return this.localCandidates(radius);
+  }
+
+  private *localCandidates(radius: number): Iterable<ActiveMonster> {
+    yield* this.monsterGrid.near(this.heroX, this.heroZ, radius + this.monsterRoamLimit);
+    for (const m of this.eventMobs) if (Math.hypot(m.x-this.heroX,m.z-this.heroZ) <= radius + this.monsterRoamLimit) yield m;
+  }
+
+  private syncInvasions(now: number): void {
+    if (!this.heroStats) return;
+    const active = INVASIONS.filter(e=>e.map === this.currentMap.id).map(e=>({e,w:invasionWindow(e,now)})).filter(v=>v.w.active);
+    const key = [this.heroStats.id,this.currentMap.id,...active.map(v=>v.e.id+v.w.start)].join('/');
+    if (key === this.eventKey) return;
+    const retained = new Map(this.eventMobs.map(m=>[m.id,m]));
+    this.eventKey = key; this.eventMobs = [];
+    const level99 = getAdminConfigSync().monsters?.extraCatalog?.find((m:{level:number})=>m.level===99);
+    for (const {e,w} of active) {
+      const sites = invasionSites(e,w.start,this.currentMap.worldSize || 3072,(x,z)=>this.isSafePoint(x,z,45));
+      const hp = (level99?.hp ?? 11400)*e.hp, attack = (level99?.damage ?? 425)*e.attack;
+      sites.forEach(({x,z},i)=>{
+        const id = ['invasion',this.heroStats!.id,e.id,i].join(':');
+        if (localStorage.getItem(id) === String(w.start)) return;
+        const old = retained.get(id);
+        if (old?.respawnAt === w.start) { this.eventMobs.push(old); retained.delete(id); return; }
+        this.eventMobs.push({id, invasion:e, def:{id,name:e.name,type:'boss',level:99,maxHp:hp,attack,defense:99,
+          xpReward:0,zenMin:e.zen,zenMax:e.zen,scale:2,colorHex:e.color,isBoss:true,roamRadius:40},
+          glbFile:e.model,attackFx:'sfx_sklmerfury01',scaledLevel:99,maxHp:hp,hp,attack,defense:99,
+          x,z,homeX:x,homeZ:z,rotY:0,animations:[],activeAnim:'',hitCooldown:1,powerCooldown:3,actionTime:0,respawnAt:w.start,alive:true});
+      });
+    }
+    for (const m of retained.values()) this.unloadMonster(m);
   }
 
   private unloadMonster(mob: ActiveMonster): void {
@@ -1371,12 +1393,13 @@ export class MuWorldEngine {
         soundSynth.playWingFlap();
       }
     } else this.wingPhase = 0;
-    let nearEnemy = false;
-    if (flying) for (const m of this.loadedMonsters) {
-      if (m.alive && (m.x-this.heroX)**2 + (m.z-this.heroZ)**2 < 100) { nearEnemy = true; break; }
+    // Leave a buffer beyond aggro range; a passing enemy must not toggle a jump clip.
+    let clearance = 1;
+    if (flying) for (const mob of this.loadedMonsters) {
+      if (mob.alive) clearance = Math.min(clearance,Math.max(0,(Math.hypot(mob.x-this.heroX,mob.z-this.heroZ)-28)/16));
     }
-    this.combatHover += ((nearEnemy ? 1 : 0) - this.combatHover) * (1 - Math.exp(-dt * 8));
-    this.hoverOffset = (flightHeight(this.wingPhase) * (1 - this.combatHover) + this.combatHover) * this.wingLift;
+    this.openSky += ((flying ? clearance : 0)-this.openSky)*(1-Math.exp(-dt*5));
+    this.hoverOffset = (1.1+(flightHeight(this.wingPhase)-1.1)*this.openSky)*this.wingLift;
     if (this.flyff.actor) this.flyff.actor.wingPhase = flying ? this.wingPhase : (this.flyff.worldClock / 2) % 1;
 
     const groundY = this.flyff.world.collision.floor(
@@ -1418,7 +1441,7 @@ export class MuWorldEngine {
       if (!this.isGrounded) {
         this.flyff.actor.playClip(this.heroVelY > 0 ? 'jump_rise' : 'jump_fall', true);
       } else {
-        this.flyff.actor.playClip(flying && !nearEnemy ? (this.wingPhase > 0.5 ? 'jump_fall' : 'jump_rise') : moving ? (len < 0.5 ? 'walk' : 'run') : 'idle', true);
+        this.flyff.actor.playClip(flying ? 'flight' : moving ? (len < 0.5 ? 'walk' : 'run') : 'idle', true);
       }
     }
 
@@ -1468,6 +1491,7 @@ export class MuWorldEngine {
     const radius = Math.min(100, this.flyff.world.detailRadius);
     this.monsterScan -= dt;
     if (this.monsterScan <= 0) {
+      this.syncInvasions(Date.now());
       this.streamMonsters(radius + 16);
       this.monsterScan = 0.2;
     }
@@ -1493,8 +1517,18 @@ export class MuWorldEngine {
         void this.getOrLoadEntityContainer(mob.glbFile).then(container => {
           if (this.disposed || mob.root !== root) return;
           if (!container) { mob.retryAt = performance.now() + 10000; return; }
-          const built = this.instantiateNormalizedModel(container, mob.id, mob.def.isBoss ? 3.2 : 1.75 * (mob.def.scale || 1));
+          const built = this.instantiateNormalizedModel(container, mob.id, mob.def.isBoss ? 3.2 : 1.75 * (mob.def.scale || 1), !!mob.invasion);
           mob.model = built.root;
+          if (mob.invasion) {
+            const tint = Color3.FromHexString(mob.invasion.color);
+            for (const m of built.root.getChildMeshes()) {
+              const material = m.material?.clone(mob.id+'-surface');
+              if (!material) continue;
+              if (material instanceof PBRMaterial) material.albedoColor.multiplyInPlace(Color3.Lerp(Color3.White(),tint,.65));
+              if (material instanceof StandardMaterial) material.diffuseColor.multiplyInPlace(Color3.Lerp(Color3.White(),tint,.65));
+              m.material = material; m.onDisposeObservable.addOnce(()=>material.dispose(false,false));
+            }
+          }
           mob.model.parent = root;
           mob.animations = built.animations;
           mob.activeAnim = '';
@@ -1683,7 +1717,7 @@ export class MuWorldEngine {
     this.callbacks.onMinimapUpdate?.({
       mapId: this.currentMap.id,
       sizeMeters: this.currentMap.worldSize || 3072,
-      hero: { x: this.heroX, z: this.heroZ },
+      hero: { x: this.heroX, z: this.heroZ, heading: this.heroRotY },
       monsters: Array.from(this.nearMonsters(150))
         .filter((m) => m.alive && Math.hypot(m.x - this.heroX, m.z - this.heroZ) <= 150)
         .map((m) => ({ id: m.id, x: m.x, z: m.z, isBoss: m.def.isBoss })),
@@ -1727,6 +1761,7 @@ export class MuWorldEngine {
     }
     this.entityContainerCache.clear();
     this.monsters = [];
+    this.eventMobs = []; this.eventKey = '';
     this.npcs = [];
     this.loots = [];
     this.remotePeers.clear();

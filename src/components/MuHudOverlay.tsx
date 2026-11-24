@@ -1,3 +1,4 @@
+import { InvasionBoard } from './InvasionBoard';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Backpack,
@@ -268,7 +269,7 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
   const wrapButton = (id: HudButtonId, children: React.ReactNode) => {
     const layout = buttonLayouts[id] || DEFAULT_BUTTON_LAYOUTS[id];
     const isSelected = editMode && selectedEditId === id;
-    const isPassiveDisplay = !editMode && (id === 'targetMonster' || id === 'damageBox');
+    const isPassiveDisplay = !editMode && (id === 'minimap' || id === 'targetMonster' || id === 'damageBox');
     const zClass = id === 'editToolbar' ? 'z-40' : id === 'damageBox' ? 'z-15' : 'z-20';
     return (
       <div
@@ -403,6 +404,7 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
       {!editMode && (
         <div className="fixed top-[54px] lg:top-[62px] left-3 z-20 flex flex-col gap-1.5 max-w-[44vw] lg:max-w-[56vw]">
           <div className="flex items-center gap-1.5 flex-wrap">
+            <InvasionBoard />
             <button
               onClick={onOpenOracle}
               className="min-h-[34px] px-2.5 rounded-lg bg-[#0e1420]/92 border border-slate-700 hover:border-emerald-500/60 text-emerald-300 text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer"
@@ -445,17 +447,18 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
       )}
 
       {/* TOP-LEFT CORNER MINI-MAP (Gold=Hero, Blue=NPC, Green=Friends, Red=Monsters) */}
-      {!editMode && minimapData && (
+      {minimapData && wrapButton('minimap',
         <div
           data-testid="hud-minimap"
-          className="pointer-events-none fixed top-[96px] lg:top-[104px] left-3 z-15 w-[112px] h-[112px] sm:w-[132px] sm:h-[132px] rounded-lg bg-[#090e17]/88 border border-amber-600/60 shadow-xl overflow-hidden select-none"
+          style={{ backgroundImage: "url('./mugroup/ui/relief.webp')", backgroundSize: 'cover' }}
+          className="pointer-events-none relative w-[112px] h-[112px] sm:w-[132px] sm:h-[132px] rounded-lg bg-[#090e17]/88 border border-amber-600/60 shadow-xl overflow-hidden select-none"
         >
           {/* Subtle coordinate crosshairs */}
           <div className="absolute inset-x-0 top-1/2 h-px bg-slate-700/45" />
           <div className="absolute inset-y-0 left-1/2 w-px bg-slate-700/45" />
           <div className="absolute top-0.5 left-1 right-1 flex items-center justify-between text-[8px] font-mono-tabular text-slate-300/90">
             <span className="truncate font-semibold text-amber-200">{getMapById(minimapData.mapId).name}</span>
-            <span>{minimapData.monsters.length}m</span>
+            <span>N ↑</span>
           </div>
 
           {/* Red dots = Monsters */}
@@ -502,8 +505,8 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
             return (
               <span
                 data-testid="minimap-hero-dot"
-                style={{ left: `${hp.xPct}%`, top: `${hp.yPct}%` }}
-                className="absolute -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-amber-100 shadow-[0_0_6px_#fbbf24]"
+                style={{ left: `${hp.xPct}%`, top: `${hp.yPct}%`, transform: `rotate(${180-(minimapData.hero.heading ?? 0)*180/Math.PI}deg)`, clipPath: "polygon(50% 0%, 100% 100%, 50% 77%, 0% 100%)" }}
+                className="absolute -translate-x-1/2 -translate-y-1/2 w-3 h-4 bg-amber-300 shadow-[0_0_6px_#fbbf24]"
               />
             );
           })()}
@@ -1007,7 +1010,7 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
 
           {powersOpen && (
             <div className="grid grid-cols-5 gap-1 rounded-lg bg-[#0b1019]/92 border border-amber-700/60 p-1 shadow-xl">
-              {classSkills.slice(0, 10).map((sk) => {
+              {classSkills.slice(0, 10).map((sk, iconIndex) => {
                 const isDefault = sk.id === defaultSkill.id;
                 const comboIdx = comboConfig.comboSkillIds.indexOf(sk.id);
                 const rank = getSkillRank(character, sk.id);
@@ -1043,10 +1046,7 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
                     }}
                     className="relative w-9 h-9 rounded bg-[#151c2c] hover:bg-[#1f2940] border flex flex-col items-center justify-center text-center cursor-pointer active:scale-95 overflow-hidden touch-none select-none"
                   >
-                    <span
-                      style={{ backgroundColor: sk.badgeColor }}
-                      className="w-2 h-2 rounded-sm mb-0.5 pointer-events-none"
-                    />
+                    <img src={`./mugroup/ui/skill-${character.classType}-${iconIndex}.webp`} alt="" className="w-4 h-4 rounded-sm pointer-events-none" />
                     <span className="text-[7.5px] font-bold text-slate-100 leading-none truncate max-w-[32px] pointer-events-none">
                       {sk.shortName}
                     </span>
@@ -1216,7 +1216,7 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
                 1. Ataque por Defecto (cuando COMBO está apagado)
               </div>
               <div className="grid grid-cols-2 gap-1.5">
-                {classSkills.slice(0, 10).map((sk) => (
+                {classSkills.slice(0, 10).map((sk, index) => (
                   <button
                     key={sk.id}
                     onClick={() =>
@@ -1228,7 +1228,7 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
                         : 'bg-[#141b2b] border-slate-800 text-slate-300'
                     }`}
                   >
-                    <div>{sk.name}</div>
+                    <div className="flex items-center gap-2"><img alt="" className="w-7 h-7" src={`./mugroup/ui/skill-${character.classType}-${index}.webp`}/>{sk.name}</div>
                     <div className="text-[10px] text-slate-400">
                       Daño x{sk.damageMultiplier} · MP {sk.mpCost}
                     </div>

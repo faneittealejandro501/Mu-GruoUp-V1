@@ -1,5 +1,5 @@
 import {
-  Color3,
+  Color3, Constants, Material,
   MeshBuilder,
   StandardMaterial,
   Texture,
@@ -134,13 +134,18 @@ export class FlyffEffectRuntime {
         const mat = new StandardMaterial(`sfx_mat_${Date.now()}_${idx}`, this.scene);
         mat.emissiveColor = col;
         mat.disableLighting = true;
+        mat.alphaMode = Constants.ALPHA_ADD;
+        mat.transparencyMode = Material.MATERIAL_ALPHABLEND;
+        mat.disableDepthWrite = true;
         mat.backFaceCulling = false;
         mat.alpha = 0.92;
 
         const texPath = part.textures?.[0];
         const tex = texPath ? this.getTexture(texPath) : null;
+        plane.setEnabled(!!tex?.isReady());
         if (tex) {
-          mat.diffuseTexture = tex;
+          tex.getAlphaFromRGB = true;
+          mat.emissiveTexture = mat.diffuseTexture = tex;
           mat.opacityTexture = tex;
           mat.useAlphaFromDiffuseTexture = true;
         }
@@ -184,7 +189,11 @@ export class FlyffEffectRuntime {
           plane.rotation.z = mix(a.rotation?.[2] || 0, b.rotation?.[2] || 0) * Math.PI / 180;
         }
         const texIndex = track.loop ? Math.floor(frame) % frames.length : Math.min(frames.length - 1, Math.floor(frame));
-        mat.diffuseTexture = mat.opacityTexture = this.getTexture(frames[texIndex]);
+        const texture = this.getTexture(frames[texIndex]);
+        if (!texture?.isReady()) { plane.setEnabled(false); continue; }
+        plane.setEnabled(true);
+        texture.getAlphaFromRGB = true;
+        mat.emissiveTexture = mat.diffuseTexture = mat.opacityTexture = texture;
         mat.alpha = mix(a?.opacity ?? 255, b?.opacity ?? 255) / 255 * Math.min(1, (1 - t) * 5);
       }
       if (t >= 1) {

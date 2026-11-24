@@ -56,7 +56,7 @@
       "damage": 58,
       "xp": 390,
       "zen": 4800,
-      "glb": "monstruos/aibatt.glb",
+      "glb": "monstruos/antiquery.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_antiquery"
     },
@@ -70,7 +70,7 @@
       "damage": 245,
       "xp": 2950,
       "zen": 38000,
-      "glb": "monstruos/bang.glb",
+      "glb": "monstruos/axkeakoon.glb",
       "sfx": "efectos/sfx_sklmerfury01.json",
       "wav": "npc_keakoon"
     },
@@ -84,7 +84,7 @@
       "damage": 24,
       "xp": 145,
       "zen": 1700,
-      "glb": "monstruos/bang.glb",
+      "glb": "monstruos/circusbear.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_bear"
     },
@@ -98,7 +98,7 @@
       "damage": 135,
       "xp": 1280,
       "zen": 15800,
-      "glb": "monstruos/jackhammer.glb",
+      "glb": "monstruos/driller.glb",
       "sfx": "efectos/mercenary_splmash.json",
       "wav": "npc_driller"
     },
@@ -112,7 +112,7 @@
       "damage": 21,
       "xp": 120,
       "zen": 1450,
-      "glb": "monstruos/rockmuscle.glb",
+      "glb": "monstruos/dumbbull.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_dumbbull"
     },
@@ -126,7 +126,7 @@
       "damage": 85,
       "xp": 690,
       "zen": 8400,
-      "glb": "monstruos/clockwork.glb",
+      "glb": "monstruos/elderguard.glb",
       "sfx": "efectos/mercenary_splmash.json",
       "wav": "npc_elderguard"
     },
@@ -140,7 +140,7 @@
       "damage": 118,
       "xp": 1040,
       "zen": 12600,
-      "glb": "monstruos/demian.glb",
+      "glb": "monstruos/flbyrigen.glb",
       "sfx": "efectos/sfx_sklmagmaglgtref01.json",
       "wav": "npc_flybrigen"
     },
@@ -154,7 +154,7 @@
       "damage": 162,
       "xp": 1600,
       "zen": 19500,
-      "glb": "monstruos/doridoma.glb",
+      "glb": "monstruos/garbagepider.glb",
       "sfx": "efectos/sfx_sklmerfury01.json",
       "wav": "npc_spider"
     },
@@ -168,7 +168,7 @@
       "damage": 320,
       "xp": 4300,
       "zen": 55000,
-      "glb": "monstruos/flybat.glb",
+      "glb": "monstruos/glaphan.glb",
       "sfx": "efectos/sfx_sklelefirfirbrd01.json",
       "wav": "npc_glaphan"
     },
@@ -182,7 +182,7 @@
       "damage": 71,
       "xp": 510,
       "zen": 6200,
-      "glb": "monstruos/flybat.glb",
+      "glb": "monstruos/gongury.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_gongury"
     },
@@ -196,7 +196,7 @@
       "damage": 79,
       "xp": 590,
       "zen": 7200,
-      "glb": "monstruos/grrr.glb",
+      "glb": "monstruos/greemong.glb",
       "sfx": "efectos/sfx_sklmagmaglgtref01.json",
       "wav": "npc_greemong"
     },
@@ -210,7 +210,7 @@
       "damage": 29,
       "xp": 190,
       "zen": 2300,
-      "glb": "monstruos/hobo.glb",
+      "glb": "monstruos/hoppre.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_hoppre"
     },
@@ -224,7 +224,7 @@
       "damage": 170,
       "xp": 1720,
       "zen": 21000,
-      "glb": "monstruos/jackhammer.glb",
+      "glb": "monstruos/iren.glb",
       "sfx": "efectos/sfx_sklmagmaglgtref01.json",
       "wav": "npc_iren"
     },
@@ -238,7 +238,7 @@
       "damage": 365,
       "xp": 5100,
       "zen": 68000,
-      "glb": "monstruos/lawolf.glb",
+      "glb": "monstruos/krrr.glb",
       "sfx": "efectos/sfx_sklmerfury01.json",
       "wav": "npc_krrr"
     },
@@ -252,7 +252,7 @@
       "damage": 49,
       "xp": 330,
       "zen": 4000,
-      "glb": "monstruos/meteonyker.glb",
+      "glb": "monstruos/leyena.glb",
       "sfx": "efectos/sfx_sklmagmaglgtref01.json",
       "wav": "npc_leyena"
     },
@@ -266,7 +266,7 @@
       "damage": 190,
       "xp": 1980,
       "zen": 24500,
-      "glb": "monstruos/mia.glb",
+      "glb": "monstruos/luia.glb",
       "sfx": "efectos/sfx_sklelefirfirbrd01.json",
       "wav": "npc_luia"
     },
@@ -280,7 +280,7 @@
       "damage": 17,
       "xp": 95,
       "zen": 1100,
-      "glb": "monstruos/flybat.glb",
+      "glb": "monstruos/mothbee.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_mothbee"
     },
@@ -294,7 +294,7 @@
       "damage": 236,
       "xp": 2800,
       "zen": 36000,
-      "glb": "monstruos/mushpang.glb",
+      "glb": "monstruos/muffrin.glb",
       "sfx": "efectos/sfx_sklmerfury01.json",
       "wav": "npc_muffrin"
     },
@@ -308,7 +308,7 @@
       "damage": 38,
       "xp": 290,
       "zen": 3500,
-      "glb": "monstruos/mushpang.glb",
+      "glb": "monstruos/mushmoot.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_mushmoot",
       "isBoss": true
@@ -323,7 +323,7 @@
       "damage": 18,
       "xp": 102,
       "zen": 1200,
-      "glb": "monstruos/rockmuscle.glb",
+      "glb": "monstruos/mushpoie.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_mushpoie"
     },
@@ -337,7 +337,7 @@
       "damage": 67,
       "xp": 465,
       "zen": 5700,
-      "glb": "monstruos/aibatt.glb",
+      "glb": "monstruos/nautrepy.glb",
       "sfx": "efectos/sfx_sklmagmaglgtref01.json",
       "wav": "npc_nautrepy"
     },
@@ -351,7 +351,7 @@
       "damage": 12,
       "xp": 62,
       "zen": 740,
-      "glb": "monstruos/pukepuke.glb",
+      "glb": "monstruos/nyangnyang.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_nyangnyang"
     },
@@ -365,7 +365,7 @@
       "damage": 154,
       "xp": 1500,
       "zen": 18500,
-      "glb": "monstruos/jackhammer.glb",
+      "glb": "monstruos/popcrank.glb",
       "sfx": "efectos/mercenary_splmash.json",
       "wav": "npc_popcrank"
     },
@@ -379,7 +379,7 @@
       "damage": 230,
       "xp": 2720,
       "zen": 35000,
-      "glb": "monstruos/burudeng.glb",
+      "glb": "monstruos/roachfl.glb",
       "sfx": "efectos/sfx_sklmerfury01.json",
       "wav": "npc_roachfl"
     },
@@ -393,7 +393,7 @@
       "damage": 425,
       "xp": 6800,
       "zen": 92000,
-      "glb": "monstruos/cardpuppet.glb",
+      "glb": "monstruos/sadking01.glb",
       "sfx": "efectos/sfx_sklelefirfirbrd01.json",
       "wav": "npc_sadking",
       "isBoss": true
@@ -408,7 +408,7 @@
       "damage": 274,
       "xp": 3480,
       "zen": 44000,
-      "glb": "monstruos/clockwork.glb",
+      "glb": "monstruos/skeldevil.glb",
       "sfx": "efectos/sfx_sklmerfury01.json",
       "wav": "npc_skeldevil"
     },
@@ -422,7 +422,7 @@
       "damage": 130,
       "xp": 1200,
       "zen": 14800,
-      "glb": "monstruos/jackhammer.glb",
+      "glb": "monstruos/steamwalker.glb",
       "sfx": "efectos/mercenary_splmash.json",
       "wav": "npc_steamwalker"
     },
@@ -436,7 +436,7 @@
       "damage": 81,
       "xp": 640,
       "zen": 7800,
-      "glb": "monstruos/clockwork.glb",
+      "glb": "monstruos/steelknight.glb",
       "sfx": "efectos/mercenary_splmash.json",
       "wav": "npc_steelknight"
     },
@@ -450,7 +450,7 @@
       "damage": 46,
       "xp": 310,
       "zen": 3800,
-      "glb": "monstruos/demian.glb",
+      "glb": "monstruos/tombstonebearer.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_tombstone"
     },
@@ -464,7 +464,7 @@
       "damage": 198,
       "xp": 2150,
       "zen": 26500,
-      "glb": "monstruos/flybat.glb",
+      "glb": "monstruos/volt.glb",
       "sfx": "efectos/sfx_sklmagmaglgtref01.json",
       "wav": "npc_volt"
     },
@@ -478,7 +478,7 @@
       "damage": 288,
       "xp": 3720,
       "zen": 47000,
-      "glb": "monstruos/grrr.glb",
+      "glb": "monstruos/wormveduque.glb",
       "sfx": "efectos/sfx_sklmerfury01.json",
       "wav": "npc_wormveduque"
     },
@@ -492,7 +492,7 @@
       "damage": 74,
       "xp": 540,
       "zen": 6500,
-      "glb": "monstruos/grrr.glb",
+      "glb": "monstruos/yeti01.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_yeti"
     },
@@ -506,7 +506,7 @@
       "damage": 110,
       "xp": 960,
       "zen": 11800,
-      "glb": "monstruos/grrr.glb",
+      "glb": "monstruos/yeti02.glb",
       "sfx": "efectos/sfx_sklmagmaglgtref01.json",
       "wav": "npc_yeti"
     },
@@ -520,7 +520,7 @@
       "damage": 335,
       "xp": 4550,
       "zen": 59000,
-      "glb": "monstruos/grrr.glb",
+      "glb": "monstruos/zombiger.glb",
       "sfx": "efectos/sfx_sklmerfury01.json",
       "wav": "npc_zombiger"
     },
@@ -534,7 +534,7 @@
       "damage": 105,
       "xp": 910,
       "zen": 11200,
-      "glb": "monstruos/meteonyker.glb",
+      "glb": "monstruos/boo.glb",
       "sfx": "efectos/sfx_sklmagmaglgtref01.json",
       "wav": "npc_boo"
     },
@@ -548,7 +548,7 @@
       "damage": 268,
       "xp": 3350,
       "zen": 42500,
-      "glb": "monstruos/mrpumpkin.glb",
+      "glb": "monstruos/carrierbomb.glb",
       "sfx": "efectos/mercenary_splmash.json",
       "wav": "npc_carrierbomb"
     },
@@ -562,7 +562,7 @@
       "damage": 56,
       "xp": 375,
       "zen": 4600,
-      "glb": "monstruos/cardpuppet.glb",
+      "glb": "monstruos/gigglebox.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_gigglebox"
     },
@@ -576,7 +576,7 @@
       "damage": 382,
       "xp": 5600,
       "zen": 74000,
-      "glb": "monstruos/mushpang.glb",
+      "glb": "monstruos/kern.glb",
       "sfx": "efectos/sfx_sklelefirfirbrd01.json",
       "wav": "npc_kern"
     },
@@ -590,7 +590,7 @@
       "damage": 98,
       "xp": 840,
       "zen": 10200,
-      "glb": "monstruos/doridoma.glb",
+      "glb": "monstruos/peakyturtle.glb",
       "sfx": "efectos/sfx_hitsword01.json",
       "wav": "npc_peakyturtle"
     },
@@ -604,7 +604,7 @@
       "damage": 225,
       "xp": 2650,
       "zen": 33000,
-      "glb": "monstruos/rockmuscle.glb",
+      "glb": "monstruos/watangka.glb",
       "sfx": "efectos/sfx_sklmerfury01.json",
       "wav": "npc_watangka",
       "isBoss": true

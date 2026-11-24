@@ -601,6 +601,7 @@ export const DEFAULT_BUTTON_LAYOUTS: Record<HudButtonId, ButtonLayoutItem> = {
   sync: { id: 'sync', label: 'Wi-Fi / BT', xPct: 77, yPct: 7, scale: 0.95 },
   inventory: { id: 'inventory', label: 'Inventario', xPct: 87, yPct: 7, scale: 0.95 },
   settings: { id: 'settings', label: 'Ajustes', xPct: 95, yPct: 7, scale: 0.95 },
+  minimap: { id: 'minimap', label: 'Minimapa', xPct: 8, yPct: 32, scale: 1 },
   targetMonster: { id: 'targetMonster', label: 'Objetivo HP', xPct: 50, yPct: 17, scale: 1.0 },
   damageBox: { id: 'damageBox', label: 'Registro Daño', xPct: 24, yPct: 24, scale: 1.0 },
   editToolbar: { id: 'editToolbar', label: 'Barra Edición', xPct: 50, yPct: 88, scale: 1.0 },

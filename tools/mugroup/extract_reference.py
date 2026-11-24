@@ -23,7 +23,7 @@ import numpy as np
 from PIL import Image, PngImagePlugin
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-TOOLS_FLYFF = ROOT / 'tools' / 'flyff'
+TOOLS_FLYFF = ROOT / 'tools' / 'world'
 sys.path.insert(0, str(TOOLS_FLYFF))
 
 import descargar as d  # noqa: E402
@@ -436,7 +436,7 @@ def build_monster_glb(mvr_name: str, out_path: pathlib.Path) -> bool:
     bones = []
     joints = []
     if has_chr:
-        ch = c.chr_data(d.fetch(chr_ref))
+        ch = c.chr_data(d.fetch(chr_ref), attachments_required=False)
         bones = ch['bones']
         for b in bones:
             joints.append(g.node(b['name'], joints[b['parent']] if b['parent'] >= 0 else root, **c.trs(c.H @ b['local'] @ c.H)))
@@ -637,7 +637,7 @@ def extract_wings_and_shine():
             bones = []
             joints = []
             if has_chr:
-                ch = c.chr_data(d.fetch(chr_ref))
+                ch = c.chr_data(d.fetch(chr_ref), attachments_required=False)
                 bones = ch['bones']
                 for b in bones:
                     joints.append(g.node(b['name'], joints[b['parent']] if b['parent'] >= 0 else root, **c.trs(c.H @ b['local'] @ c.H)))
