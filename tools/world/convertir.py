@@ -82,11 +82,12 @@ def o3d(path):
         meshes.append(mesh)
     return dict(name=name,version=ver,bounds=bounds,meshes=meshes,collision=collision,frames=nf)
 
-def chr_data(path):
+def chr_data(path, attachments_required=True):
     r=Reader(path.read_bytes());ver=r.i();ident=r.i();count=r.i();bones=[]
     for _ in range(count):
         name=r.string();world=r.mat();inv=r.mat();local=r.mat();parent=r.i()
         bones.append(dict(name=name,world=world,inv=inv,local=local,parent=parent))
+    if not attachments_required: return dict(bones=bones, attachments={})
     r.i();attachments={k:r.mat() for k in ['rightHand','shield','knuckle']};r.skip(128)
     attachments['leftHand']=r.mat() if ver>=7 else attachments['rightHand']
     return dict(bones=bones,attachments=attachments)

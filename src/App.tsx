@@ -801,7 +801,7 @@ export default function App() {
         setCharacter(prev => prev?.id === char.id ? { ...prev, equipment: next.filter(i=>i.isEquipped), inventory: next.filter(i=>!i.isEquipped) } : prev);
         void wearEquipment(char.id, slot, durability, next.find(i => i.isEquipped && i.slot === slot)?.id).catch(error => pushBanner(String(error), '#f87171'));
       },
-      onKillMonster: async (xp, zen) => {
+      onKillMonster: async (xp, zen, invasion) => {
         const c = charRef.current;
         if (!c) return;
         let nextXp = c.xp + xp;
@@ -811,25 +811,26 @@ export default function App() {
         let nextMaxMp = c.maxMp;
         let nextMaxSd = c.maxSd;
         let nextMaxAg = c.maxAg;
-        let unspentPoints = c.unspentPoints;
+        let unspentPoints = c.unspentPoints + (invasion?.points ?? 0);
         let skillPoints = c.skillPoints ?? 2;
         let leveledUp = false;
 
-        while (nextXp >= nextXpToNext && nextLevel < MAX_HERO_LEVEL) {
-          nextXp -= nextXpToNext;
+        let bonusLevels = invasion?.levels ?? 0;
+        while ((bonusLevels > 0 || nextXp >= nextXpToNext) && nextLevel < MAX_HERO_LEVEL) {
+          if (bonusLevels > 0) bonusLevels--; else nextXp -= nextXpToNext;
           nextLevel += 1;
           nextXpToNext = getXpRequiredForLevel(nextLevel);
           nextMaxHp += 28;
           nextMaxMp += 18;
           nextMaxSd += 22;
           nextMaxAg += 5;
-          unspentPoints += POINTS_PER_LEVEL;
+          if (!invasion) unspentPoints += POINTS_PER_LEVEL;
           skillPoints += 1;
           leveledUp = true;
           if (nextLevel >= MAX_HERO_LEVEL) {
             nextXp = 0;
             pushBanner(`¡Nivel Máximo ${MAX_HERO_LEVEL} alcanzado! Haz RESET en Atributos (C)`, '#f43f5e');
-          } else {
+          } else if (!invasion) {
             pushBanner(`¡Subiste a Nivel ${nextLevel}! (+${POINTS_PER_LEVEL} Pts Atributo & +1 SkillPt)`, '#fbbf24');
           }
         }
@@ -859,8 +860,11 @@ export default function App() {
           zen: c.zen + zen,
           kills: c.kills + 1,
         };
+        if (invasion) pushBanner(`${invasion.name}: +${zen.toLocaleString()} Zen · +${nextLevel-c.level} niveles · +${invasion.points} puntos`, '#fbcf69');
+        charRef.current = updated;
+        setCharacter(updated);
         const saved = normalizeCharacterRecord(await updateCharacter(updated));
-        setCharacter(saved);
+        if (charRef.current === updated) setCharacter(saved);
         await checkAndGrantAchievements(saved, itemsRef.current, ledgerRef.current.length, eventsRef.current.length);
       },
       onPickupLoot: async (drop) => {

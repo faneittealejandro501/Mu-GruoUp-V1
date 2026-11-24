@@ -60,6 +60,7 @@ export type HudButtonId =
   | 'stats'
   | 'sync'
   | 'settings'
+  | 'minimap'
   | 'targetMonster'
   | 'damageBox'
   | 'editToolbar';
@@ -294,7 +295,7 @@ export interface FloatingDamageNumber {
 export interface MinimapEntitySnapshot {
   mapId: MapId;
   sizeMeters: number;
-  hero: { x: number; z: number };
+  hero: { x: number; z: number; heading?: number };
   monsters: Array<{ id: string; x: number; z: number; isBoss?: boolean }>;
   npcs: Array<{ id: string; name: string; x: number; z: number }>;
   friends: Array<{ id: string; name?: string; x: number; z: number }>;

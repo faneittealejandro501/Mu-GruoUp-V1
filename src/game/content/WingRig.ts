@@ -4,9 +4,8 @@ import { Matrix, Mesh, Quaternion, TransformNode, Vector3, VertexBuffer } from '
 // Converting to actor coordinates avoids inheriting bone scale and glTF axis flips.
 export class WingRig {
   private actorInverse = Matrix.Identity();
-  private relative = Matrix.Identity();
-  private rest = Quaternion.Identity();
-  private rotation = Quaternion.Identity();
+  private lower = Vector3.Zero();
+  private axis = Vector3.Zero();
   private offset = Vector3.Zero();
   private readonly back = new Vector3(0, 0, -0.11);
   private readonly flex: { mesh: Mesh; rest: Float32Array; animated: Float32Array; width: number }[] = [];
@@ -21,10 +20,7 @@ export class WingRig {
     this.mount = mount;
     this.upper = upper;
     this.torso = torso;
-    actor.computeWorldMatrix(true).invertToRef(this.actorInverse);
-    torso.computeWorldMatrix(true).multiplyToRef(this.actorInverse, this.relative);
-    this.relative.decompose(undefined, this.rest, undefined);
-    this.rest.invertInPlace();
+
   }
 
   addUnskinned(mesh: Mesh): void {
@@ -41,10 +37,14 @@ export class WingRig {
 
   update(phase: number, flying: boolean): void {
     this.actor.computeWorldMatrix(true).invertToRef(this.actorInverse);
-    this.torso.computeWorldMatrix(true).multiplyToRef(this.actorInverse, this.relative);
-    this.relative.decompose(undefined, this.rotation, undefined);
-    this.rotation.multiplyToRef(this.rest, this.mount.rotationQuaternion!);
+    Vector3.TransformCoordinatesToRef(this.torso.computeWorldMatrix(true).getTranslation(), this.actorInverse, this.lower);
     Vector3.TransformCoordinatesToRef(this.upper.computeWorldMatrix(true).getTranslation(), this.actorInverse, this.mount.position);
+    // Spine axes differ across imported rigs. Follow the anatomical direction
+    // instead of treating the attack pose at equip time as the bind pose.
+    this.mount.position.subtractToRef(this.lower,this.axis);
+    const limit = (angle:number)=>Math.max(-.46,Math.min(.46,angle));
+    Quaternion.RotationYawPitchRollToRef(0,limit(Math.atan2(this.axis.z, Math.max(.01,this.axis.y))),
+      -limit(Math.atan2(this.axis.x, Math.max(.01,this.axis.y))),this.mount.rotationQuaternion!);
     this.back.applyRotationQuaternionToRef(this.mount.rotationQuaternion!, this.offset);
     this.mount.position.addInPlace(this.offset);
     const flap = Math.sin(phase * Math.PI * 2) * (flying ? 0.62 : 0.16);

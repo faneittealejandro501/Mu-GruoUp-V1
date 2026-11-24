@@ -1,3 +1,4 @@
+import { craterMaterial } from './content/CraterSurface';
 import { findHeroAppearance, heroAppearanceName, heroAppearancePath } from '../data/heroAppearances';
 import { HeroMotion } from './content/HeroMotion';
 import { createWaterMaterial, createWaterMesh, updateWaterMaterial } from './content/WaterSurface';
@@ -7,7 +8,7 @@ import {
   AnimationGroup,
   AssetContainer,
   Color3,
-  Mesh,
+  Mesh, Material,
   Node,
   ParticleSystem,
   PointLight,
@@ -389,6 +390,18 @@ export class FlyffWorldStreamer {
   public detailRadius = 100;
   public stripManmadeStructures = true;
 
+  private crater = false;
+  private volcanic: ShaderMaterial | null = null;
+  private originalSurfaces = new WeakMap<AbstractMesh,Material>();
+  public setCrater(active: boolean) {
+    this.crater = active;
+    for (const tile of this.tiles.values()) for (const mesh of tile.terrainContainer.meshes) this.styleGround(mesh);
+  }
+  private styleGround(mesh: AbstractMesh) {
+    if (!mesh.material || mesh.name === '__root__') return;
+    if (!this.originalSurfaces.has(mesh)) this.originalSurfaces.set(mesh,mesh.material);
+    mesh.material = this.crater ? (this.volcanic ??= craterMaterial(this.scene)) : this.originalSurfaces.get(mesh)!;
+  }
   private collisionCache = new Map<string, CollisionGeometryData>();
   private streamingLock: Promise<void> | null = null;
   private getWorldClock: () => number;
@@ -585,6 +598,7 @@ export class FlyffWorldStreamer {
         m.position.set(tileDef.x, 0, tileDef.z);
       } else if (m.material) {
         m.material.backFaceCulling = false;
+        this.styleGround(m);
       }
       m.isPickable = false;
     }
@@ -748,6 +762,7 @@ export class FlyffWorldStreamer {
     } catch {
       // ignore
     }
+    this.volcanic?.dispose(false,true); this.volcanic=null;
     this.waterMaterial = null;
   }
 }

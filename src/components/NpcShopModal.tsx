@@ -1,3 +1,4 @@
+import { ItemPortrait } from './ItemPortrait';
 import { ITEM_CATALOG } from '../data/itemCatalog';
 import { getAdminConfigSync } from '../services/adminConfigService';
 import React, { useState } from 'react';
@@ -147,7 +148,7 @@ export const NpcShopModal: React.FC<NpcShopModalProps> = ({
                   <div>
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs font-bold text-amber-200">
-                        {s.name} +{s.enhanceLevel}
+                        <ItemPortrait item={s} sex={character.sex}/> {s.name} +{s.enhanceLevel}
                       </span>
                       <span className="text-[10px] font-mono-tabular uppercase text-slate-300">
                         {s.rarity}
