@@ -43,7 +43,9 @@ jobs:
         env:
           VITE_WORLD_SERVER_URL: ${{ vars.VITE_WORLD_SERVER_URL }}
           VITE_BACKUP_URL: ${{ vars.VITE_BACKUP_URL }}
-        run: bun run build
+        run: |
+          bun run build
+          node scripts/write-server-connection.mjs
 
       - name: Run release tests
         run: bun run test:release

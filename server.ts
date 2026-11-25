@@ -20,7 +20,7 @@ import type {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const PORT = 3000;
+const PORT = Number(process.env.PORT || 3000);
 const APP_VERSION = otaManifest.version;
 const CLOUD_STORE_PATH = path.join(__dirname, '.mugroup-duels.json');
 
@@ -72,6 +72,7 @@ function createGeminiClient() {
 
 async function startServer() {
   const app = express();
+  if (process.env.MU_TRUST_PROXY) app.set('trust proxy',process.env.MU_TRUST_PROXY);
   app.use(express.json({ limit: '2mb' }));
 
   const httpServer = http.createServer(app);
@@ -160,6 +161,7 @@ async function startServer() {
     app,
     process.env.MU_BACKUP_DIR || path.join(__dirname, '.mugroup-backups'),
     process.env.MU_BACKUP_ORIGINS || '',
+    process.env.MU_RECOVERY_KEY || '',
   );
 
   // API: Publish & List Async Duel Challenges (Wi-Fi / Offline Sync)

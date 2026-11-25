@@ -160,6 +160,14 @@ export function WorldAdminPanel({ initial, session, onClose, onPublished }: {
         } catch (error) { setStatus(error instanceof Error ? error.message : 'No se publicaron los cambios.'); }
         finally { setPending(false); }
       }}>{pending ? 'Guardando…' : 'Guardar y resetear mundo'}</button>
+      <button className={buttonClass} type="button" disabled={pending || expired} onClick={() => {
+        const href = URL.createObjectURL(new Blob([JSON.stringify(draft,null,2)+'\n'],{type:'application/json'}));
+        const link = document.createElement('a');
+        link.href = href;
+        link.download = 'live-world.json';
+        link.click();
+        setTimeout(()=>URL.revokeObjectURL(href),1000);
+      }}>Exportar configuración para Git</button>
       <p role="status">{expired ? 'Sesión vencida. Vuelve a iniciar sesión.' : status}</p>
     </div>
   </section>;

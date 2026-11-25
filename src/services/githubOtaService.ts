@@ -1,3 +1,4 @@
+import { isPublishedClient, parseServerOrigin, sharedServerOrigin } from './serverConnection';
 import { androidClient } from './androidRooms';
 import { offlineInstallReady } from './offlineInstall';
 import manifest from '../../public/ota-manifest.json' with { type: 'json' };
@@ -50,7 +51,9 @@ export function setLinkedGithubRepoSlug(raw: string): string {
 
 export function getConfiguredCloudApiUrl(): string {
   try {
-    return (localStorage.getItem(LS_CLOUD_URL_KEY) || import.meta.env.VITE_BACKUP_URL || import.meta.env.VITE_WORLD_SERVER_URL || '').trim().replace(/\/+$/g, '');
+    const shared = sharedServerOrigin();
+    const override = parseServerOrigin(localStorage.getItem(LS_CLOUD_URL_KEY));
+    return isPublishedClient(location.hostname) ? shared || override : override || shared;
   } catch {
     return '';
   }

@@ -279,13 +279,8 @@ export async function registerAccount(input: {
     return { ok: false, error: 'Debes completar ambas preguntas secretas.' };
   }
 
-  const existing = (await db.accounts.toArray()).find((a) => a.id !== ADMIN_PROFILE_ID && a.username.toLowerCase() === cleanUser);
-  if (existing) {
-    return { ok: false, error: `El usuario "${cleanUser}" ya está registrado en este dispositivo.` };
-  }
-
   const account: MuAccount = {
-    id: `acc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    id: 'acc-' + Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join(''),
     username: cleanUser,
     passwordHash: await hashSecret(input.password),
     secretQ1: input.secretQ1,
@@ -296,11 +291,13 @@ export async function registerAccount(input: {
     updatedAt: Date.now(),
     isSynced: false,
   };
-  await db.transaction('rw',db.accounts,db.kvMeta,async () => {
-    await db.accounts.put(account);
+  return db.transaction('rw',db.accounts,db.kvMeta,async () => {
+    if (await db.accounts.where('username').equalsIgnoreCase(cleanUser).first())
+      return {ok:false,error:'Ese ID ya existe en este dispositivo.'};
+    await db.accounts.add(account);
     await db.kvMeta.put({key:'privateBackup:pending:' + account.id,value:true});
+    return { ok:true,account };
   });
-  return { ok: true, account };
 }
 
 export async function changeAccountPassword(
@@ -318,11 +315,10 @@ export async function changeAccountPassword(
   if (newPassword.length < 4) {
     return { ok: false, error: 'La nueva contraseña debe tener al menos 4 caracteres.' };
   }
-  await db.accounts.put({
-    ...acc,
-    passwordHash: await hashSecret(newPassword),
-    updatedAt: Date.now(),
-    isSynced: false,
+  const passwordHash = await hashSecret(newPassword);
+  await db.transaction('rw',db.accounts,db.kvMeta,async()=>{
+    await db.accounts.put({...acc,passwordHash,updatedAt:Math.max(Date.now(),acc.updatedAt+1),isSynced:false});
+    await db.kvMeta.put({key:'privateBackup:pending:' + acc.id,value:true});
   });
   return { ok: true };
 }

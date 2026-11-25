@@ -579,7 +579,7 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
             className="min-h-[42px] px-4 rounded-xl bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-xs inline-flex items-center gap-2 shadow-2xl border border-amber-200 cursor-pointer"
           >
             <MessageSquare className="w-4 h-4" />
-            Hablar con {nearbyNpc.name}
+            {nearbyNpc.warpTarget ? 'Viajar a' : 'Hablar con'} {nearbyNpc.name}
           </button>
         </div>
       )}

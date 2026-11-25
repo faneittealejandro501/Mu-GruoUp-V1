@@ -25,7 +25,13 @@ Abre `http://localhost:3000/`. Crea una cuenta para guardar una partida en el di
 
 Configura en el servidor Node `MU_ADMIN_PASSWORD` con una contraseña nueva de al menos 16 caracteres, guardada como secreto del entorno. Abre el acceso del juego con el ID **Adonyhdp** y ese secreto. La cuenta de administración se recupera rotando el secreto del servidor. El panel permite editar estadísticas y grupos de monstruos, posiciones y tiendas de NPC, e invasiones. Al publicar, los clientes conectados consultan los cambios cada 15 segundos; el mapa activo retira monstruos, NPC y botín del suelo por dos segundos y vuelve a cargarlos. Los grupos manuales se añaden a las patrullas distribuidas por el mapa. Los inventarios, personajes y registros de jefes derrotados se conservan.
 
-En producción, sirve Node por HTTPS y fija `MU_WORLD_FILE` a un archivo de un volumen persistente. Por defecto guarda en `ADMIN/live-world.local.json`. Si la APKweb se publica en Pages, fija `VITE_WORLD_SERVER_URL` como variable de Actions para la compilación y agrega el origen de Pages (sin la ruta) a `MU_WORLD_ORIGINS` en Node. Para una edición que deba viajar en Git, copia la configuración publicada a `ADMIN/live-world.json` y crea una versión. El panel publica al servidor y no necesita credenciales de GitHub. La APKweb usa la última configuración recibida mientras está offline.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:ac186358d1bcf506cf03e46ff86d500c0e7509d7a9a64dc212db056236a6d282 -->
+
+El panel publica al servidor y la web y el APK reciben la revisión automáticamente. Para guardar un cambio también en el código fuente, usa **Exportar configuración para Git**, guarda el archivo como `ADMIN/live-world.json` y revisa el diff antes de publicarlo. La descarga contiene la configuración del mundo.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 <!-- /coderabbit-ai-generated:v1 -->
 
@@ -53,7 +59,19 @@ La Web y la PWA comprueban actualizaciones de la ubicación instalada al recuper
 
 <!-- coderabbit-ai-generated-section:v1:f3499918a1cde39fc6899a291a654fdd508cf10815c640cab5300caa5a4f0e4a -->
 
-Pages publica el cliente compilado. Ejecuta el servidor Node detrás de HTTPS con un volumen persistente en `MU_BACKUP_DIR`. Configura `MU_BACKUP_ORIGINS=https://faneittealejandro501.github.io,https://apk.mugroup.invalid` y la variable de Actions `VITE_BACKUP_URL` con la URL del servidor antes de compilar. Al jugar con conexión se vincula la cuenta activa y se guardan sus personajes e inventario cifrados. En otro dispositivo entra con el mismo ID y contraseña después del primer respaldo. Sin conexión se usa la copia local; los cambios pendientes se envían al volver a jugar con internet. Si dos jugadores registran el mismo ID sin conexión, sus partidas se mantienen separadas. El código manual sigue disponible para recuperación.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:8bb92cff5402417bba038be5132ace540885350a2b9236e5b124af65f15d3513 -->
+
+GitHub Pages publica la web, el APK y `server-connection.json`. Ambos clientes leen ese archivo para encontrar el mismo servidor de cuentas y ADMIN. El APK también guarda la URL de la compilación como respaldo si la consulta no responde.
+
+1. En un servidor con Node 24 y Bun 1.4.2, obtén esta revisión y ejecuta `bun install --frozen-lockfile`, `bun run build` y `bun run start`. Pon un proxy HTTPS delante del puerto 3000 (o usa el puerto de tu hospedaje con `PORT`).
+2. Configura `MU_BACKUP_DIR` y `MU_WORLD_FILE` en un volumen persistente. Habilita `MU_BACKUP_ORIGINS` y `MU_WORLD_ORIGINS` con `https://faneittealejandro501.github.io,https://apk.mugroup.invalid`. Genera `MU_RECOVERY_KEY` con `openssl rand -hex 32` y guarda una copia privada junto a los respaldos. Para ADMIN, configura una contraseña nueva con `MU_ADMIN_PASSWORD`.
+3. En GitHub → Settings → Secrets and variables → Actions → Variables, define `VITE_BACKUP_URL` con el origen HTTPS del servidor, sin ruta final. Ejecuta **Deploy GitHub Pages**. Puedes verificar la conexión consultando `/Mu-GruoUp-V1/server-connection.json` en Pages y `/api/ota/manifest` en el servidor.
+
+Las cuentas se verifican y respaldan de forma privada. Abre una cuenta existente en el dispositivo donde se creó y espera que sincronice; después podrás iniciar sesión con ese ID o recuperarlo con una sola respuesta y una contraseña nueva. Las preguntas se habilitan al volver a sincronizar. Si el servidor está apagado, se puede seguir jugando con una cuenta ya guardada en ese dispositivo. Con conexión el servidor reserva un ID por cuenta; si dos dispositivos crean el mismo ID sin conexión, el primer respaldo reserva el nombre. La otra partida queda en su dispositivo y puede exportarse desde **Web / APKweb**. Conserva el mismo origen y el mismo volumen al migrar el servidor.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 <!-- /coderabbit-ai-generated:v1 -->
 
@@ -132,7 +150,13 @@ Las reglas base de ADMIN viajan en cada compilación. El panel publica cambios d
 
 <!-- coderabbit-ai-generated-section:v1:2b75c09f88a0c7c163a860fc7cdd0d366d816efb168de085069e918e27455ff2 -->
 
-Cada mapa reparte campamentos de diez monstruos por las zonas exteriores. La separación mínima al aparecer es de 100 metros entre miembros de campamentos distintos. El terreno disponible limita el total; las ciudades siguen protegidas. Los grupos manuales de ADMIN y las invasiones conservan sus propias posiciones.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:c1ca9399acc3671599261b7eb6667b0738ec8400866bbf479d8fa9aebe63915f -->
+
+Madrigal es un terreno común de 9,44 km² con cuatro regiones y cuatro portales interactivos en cada capital. Se puede caminar de una región a otra sin cargar un mapa nuevo. Los campamentos de diez se distribuyen una sola vez y mantienen la separación al aparecer. La tienda muestra el retrato disponible, precio y estadísticas de la pieza.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 <!-- /coderabbit-ai-generated:v1 -->
 

@@ -1,14 +1,13 @@
-import { Scene, ShaderMaterial, Texture } from '@babylonjs/core';
+import { Scene, ShaderMaterial, Texture, Vector3, type BaseTexture } from '@babylonjs/core';
 
-// Repeat the Darkon rock and molten textures in world space. The original tile
-// atlas stays on the mesh for instant restoration when leaving the crater.
-export function craterMaterial(scene: Scene) {
+// Blend the existing tile atlas with volcanic textures only inside the crater.
+export function craterMaterial(scene: Scene, base: BaseTexture, center: {x:number;z:number;radius:number}, stone: Texture, magma: Texture) {
   const mat = new ShaderMaterial('crater-rock-and-lava',scene,{
     vertexSource: `precision highp float;
-    attribute vec3 position; uniform mat4 world, worldViewProjection; varying vec3 p;
-    void main(){p=(world*vec4(position,1.)).xyz;gl_Position=worldViewProjection*vec4(position,1.);}`,
+    attribute vec3 position; attribute vec2 uv; varying vec2 tex; uniform mat4 world, worldViewProjection; varying vec3 p;
+    void main(){tex=uv;p=(world*vec4(position,1.)).xyz;gl_Position=worldViewProjection*vec4(position,1.);}`,
     fragmentSource: `precision highp float;
-    uniform sampler2D stone, magma; uniform float clock; uniform vec3 eye, haze; varying vec3 p;
+    uniform sampler2D stone, magma, terrain; uniform vec3 crater; varying vec2 tex; uniform float clock; uniform vec3 eye, haze; varying vec3 p;
     void main(){
       vec2 uv=p.xz*.115;
       vec3 rock=texture2D(stone,uv+vec2(p.y*.043)).rgb;
@@ -17,11 +16,15 @@ export function craterMaterial(scene: Scene) {
       vec3 melt=texture2D(magma,uv*.54+vec2(clock*.014,clock*.008)).rgb;
       vec3 ash=mix(vec3(.15,.105,.10),vec3(.54,.38,.28),rock.r);
       vec3 lava=vec3(.66,.10,.015)+melt*vec3(1.15,.70,.25);
-      vec3 col=mix(ash*(.72+rock*.6),lava,flow);
-      gl_FragColor=vec4(mix(col,haze,smoothstep(145.,400.,distance(eye,p))),1.);
-    }`},{attributes:['position'],uniforms:['world','worldViewProjection','clock','eye','haze'],samplers:['stone','magma']});
-  mat.setTexture('stone',new Texture('./mugroup/ui/basalt.webp',scene));
-  mat.setTexture('magma',new Texture('./mugroup/ui/magma.webp',scene));
+      vec3 volcanic=mix(ash*(.72+rock*.6),lava,flow);
+      float influence=1.-smoothstep(crater.z*.7,crater.z,distance(p.xz,crater.xy));
+      vec3 col=mix(texture2D(terrain,tex).rgb,volcanic,influence);
+      gl_FragColor=vec4(mix(col,haze,smoothstep(230.,450.,distance(eye,p))),1.);
+    }`},{attributes:['position','uv'],uniforms:['world','worldViewProjection','clock','eye','haze','crater'],samplers:['stone','magma','terrain']});
+  mat.setTexture('stone',stone);
+  mat.setTexture('magma',magma);
+  mat.setTexture('terrain',base);
+  mat.setVector3('crater',new Vector3(center.x,center.z,center.radius));
   mat.backFaceCulling=false;
   mat.onBindObservable.add(()=>{
     mat.setFloat('clock',(performance.now()%3600000)/1000);

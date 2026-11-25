@@ -51,3 +51,24 @@ test('water cells share edges and invalid or duplicate cells emit no extra faces
   assert.deepEqual(positions.slice(9, 12), positions.slice(12, 15));
   assert.deepEqual(positions.slice(6, 9), positions.slice(15, 18));
 });
+
+test('Madrigal has one regional coordinate space and four distinct routes at every capital', async () => {
+  const {nearestRegion,capitalPortals} = await import('../src/game/worldRegions.ts');
+  const maps = ['flaris','robledal','puerto_bruma','crater_ceniza'].map((id,i)=>({
+    id,spawn:[{x:1336,z:1281},{x:520,z:2440},{x:2300,z:2390},{x:2540,z:490}][i],
+  }));
+  const portals = capitalPortals(maps);
+  assert.equal(new Set(portals.map(p=>p.id)).size,16);
+  for (const map of maps) {
+    const local = portals.filter(p=>p.from.id === map.id);
+    assert.equal(local.length,4);
+    assert.deepEqual(local.map(p=>p.target.id),maps.map(m=>m.id));
+    for (const p of local) {
+      assert.equal(nearestRegion(maps,p.x,p.z).id,map.id);
+      assert.equal(Math.round(Math.hypot(p.x-map.spawn.x,p.z-map.spawn.z)),24);
+    }
+  }
+  const visits = new Set();
+  for (let i=0;i<=100;i++) visits.add(nearestRegion(maps,1336+1204*i/100,1281-791*i/100).id);
+  assert.deepEqual([...visits],['flaris','crater_ceniza']);
+});

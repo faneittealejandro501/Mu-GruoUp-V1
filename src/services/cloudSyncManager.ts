@@ -1,4 +1,5 @@
-import { loginNameTaken, lookupAccountLink, publishAccountLink } from './accountLink';
+import { discoverSharedServer, isPublishedClient } from './serverConnection';
+import { loginNameTaken, lookupAccountLink, lookupRecoveryLink, lookupRecoveryQuestions, publishAccountLink } from './accountLink';
 import { generateRecoveryCode, syncEncryptedBackup } from './privateBackup';
 import { db, hashSecret, getKvSetting, initDexie, normalizeCharacterRecord, setKvSetting } from '../db/dexieStore';
 import { getConfiguredCloudApiUrl } from './githubOtaService';
@@ -18,7 +19,8 @@ class CloudSyncManager {
   private activeAccountId: string | null = null;
   private pollTimer: number | null = null;
   private syncing = false;
-  private apiProbeState: 'unknown' | 'available' | 'unavailable' = 'unknown';
+  private recoveryRetryAt = new Map<string,number>();
+  private apiProbeState: 'unknown' | 'available' = 'unknown';
 
   private status: SyncStatusInfo = {
     isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
@@ -146,12 +148,13 @@ class CloudSyncManager {
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       return null;
     }
+    await discoverSharedServer();
     const configured = getConfiguredCloudApiUrl();
     if (configured) {
       return configured;
     }
+    if (isPublishedClient(location.hostname)) return null;
     if (this.apiProbeState === 'available') return '';
-    if (this.apiProbeState === 'unavailable') return null;
 
     const ctrl = new AbortController();
     const timer = window.setTimeout(() => ctrl.abort(), 2500);
@@ -166,13 +169,13 @@ class CloudSyncManager {
     } finally {
       window.clearTimeout(timer);
     }
-    this.apiProbeState = 'unavailable';
+    this.apiProbeState = 'unknown';
     return null;
   }
 
   private async backupEndpoint(): Promise<URL> {
     const base = await this.resolveApiBase();
-    if (base === null) throw new Error('Configura un servidor de copia privada con conexión.');
+    if (base === null) throw new Error('El servidor de cuentas de MuGro-up no está configurado o no responde.');
     return new URL(base + '/api/private-backup', window.location.origin);
   }
 
@@ -191,7 +194,7 @@ class CloudSyncManager {
   }
 
   private async applyBackup(
-    copy: { account: MuAccount; characters: MuCharacter[] }, endpoint: URL, code: string,
+    copy: { account: MuAccount; characters: MuCharacter[] }, endpoint: URL, code: string, pending = false,
   ): Promise<void> {
     let applied = false;
     await db.transaction('rw', db.accounts, db.characters, db.items, db.kvMeta, async () => {
@@ -220,6 +223,7 @@ class CloudSyncManager {
         }
       }
       await setKvSetting('privateBackup:' + copy.account.id, { endpoint: endpoint.href, code });
+      if (pending) await setKvSetting('privateBackup:pending:' + copy.account.id,true);
     });
     if (applied) for (const listener of this.dataAppliedListeners) listener();
   }
@@ -230,7 +234,7 @@ class CloudSyncManager {
     const id = this.activeAccountId;
     if (!id) throw new Error('Inicia sesión para activar la copia.');
     const base = getConfiguredCloudApiUrl();
-    if (!base && location.hostname.endsWith('.github.io')) throw new Error('Configura el servidor privado para activar la copia.');
+    if (!base && isPublishedClient(location.hostname)) throw new Error('Configura el servidor privado para activar la copia.');
     const endpoint = new URL((base || location.origin) + '/api/private-backup');
     if (endpoint.protocol !== 'https:' && !['localhost','127.0.0.1','[::1]'].includes(endpoint.hostname)) {
       throw new Error('El servidor de respaldo debe usar HTTPS.');
@@ -281,10 +285,56 @@ class CloudSyncManager {
     }
   }
 
+  public async recoveryQuestions(username: string) {
+    this.checkRecovery(username);
+    return lookupRecoveryQuestions(await this.backupEndpoint(),username);
+  }
+
+  private checkRecovery(username: string) {
+    if (username.trim().toLowerCase() === 'adonyhdp') throw Error('El acceso ADMIN se restablece en el servidor.');
+    if (!navigator.onLine) throw Error('Conéctate a internet para recuperar la cuenta.');
+  }
+
+  public async recoverLogin(username: string, slot: 1|2, answer: string, password: string) {
+    this.checkRecovery(username);
+    if (password.length < 4 || !answer.trim()) throw Error('Escribe una respuesta y una nueva contraseña de al menos 4 caracteres.');
+    if (this.syncing) throw Error('Espera a que termine la sincronización.');
+    let id: string;
+    this.syncing = true;
+    try {
+      const endpoint = await this.backupEndpoint();
+      const verifier = await hashSecret(answer.trim().toLowerCase());
+      const code = await lookupRecoveryLink(endpoint,username,slot,verifier);
+      const copy = await syncEncryptedBackup(endpoint,code);
+      if (copy.account.username !== username.trim().toLowerCase() ||
+          (slot === 1 ? copy.account.secretA1 : copy.account.secretA2) !== verifier) throw Error('La respuesta de recuperación no coincide.');
+      const local = await db.accounts.get(copy.account.id);
+      copy.account = {...copy.account, passwordHash:await hashSecret(password),
+        updatedAt:Math.max(Date.now(),copy.account.updatedAt + 1,(local?.updatedAt || 0) + 1)};
+      await this.applyBackup(copy,endpoint,code,true);
+      id = copy.account.id;
+    } finally { this.syncing = false; }
+    const result = await this.syncNow(id);
+    if (!result.ok) throw Error(result.message);
+  }
+
   public async nameTaken(username: string) {
     if (!navigator.onLine) return false;
     try { return await loginNameTaken(await this.backupEndpoint(),username); }
     catch { return false; } // Offline registration is reconciled on reconnect.
+  }
+
+  public async refreshLinkedLogin(account: MuAccount): Promise<boolean> {
+    const binding = await getKvSetting<{endpoint:string;code:string} | null>('privateBackup:' + account.id,null);
+    if (!binding || !navigator.onLine) return false;
+    try {
+      const endpoint = await this.backupEndpoint();
+      if (endpoint.href !== binding.endpoint) return false;
+      const copy = await syncEncryptedBackup(endpoint,binding.code);
+      if (copy.account.id !== account.id || copy.account.updatedAt <= account.updatedAt) return false;
+      await this.applyBackup(copy,endpoint,binding.code);
+      return true;
+    } catch { return false; } // The local copy remains usable while the server is unavailable.
   }
 
   public async restoreLogin(username: string, password: string) {
@@ -320,11 +370,18 @@ class CloudSyncManager {
       this.updateStatus({ syncing: true, error: null });
       const copy = await syncEncryptedBackup(endpoint, saved.code, await this.snapshot(id));
       await this.applyBackup(copy, endpoint, saved.code);
-      const marker = 'privateBackup:link:' + id;
+      const marker = 'privateBackup:link-v2:' + id;
       const stamp = endpoint.href + ':' + copy.account.passwordHash + ':' + saved.code;
-      if (await getKvSetting(marker,'') !== stamp) {
-        await publishAccountLink(endpoint,copy.account.username,copy.account.passwordHash,saved.code,copy.account.updatedAt);
-        await setKvSetting(marker,stamp);
+      const prior = await getKvSetting(marker,'');
+      if (prior !== stamp && (prior !== stamp + ':pending' || Date.now() >= (this.recoveryRetryAt.get(id) || 0))) {
+        const {account} = copy;
+        const enabled = await publishAccountLink(endpoint,account.username,account.passwordHash,saved.code,account.updatedAt,
+          account.secretA1 && account.secretA2 ? [
+            {question:account.secretQ1,verifier:account.secretA1},
+            {question:account.secretQ2,verifier:account.secretA2},
+          ] : undefined);
+        await setKvSetting(marker,enabled ? stamp : stamp + ':pending');
+        this.recoveryRetryAt.set(id,Date.now()+5*60_000);
       }
       await this.refreshPendingCount();
       await db.kvMeta.delete('privateBackup:pending:' + id);

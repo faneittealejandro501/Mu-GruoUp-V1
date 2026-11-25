@@ -1,3 +1,4 @@
+import { capitalPortals, nearestRegion } from './worldRegions';
 import creatureModels from '../data/creatureModels.json' with {type:'json'};
 import { flightHeight } from './content/WingRig';
 import { invasionSites, invasionWindow, type Invasion } from '../data/worldInvasions';
@@ -391,7 +392,7 @@ export class MuWorldEngine {
 
   private applyAdminWorldRules(): void {
     const rules = getAdminConfigSync()['world-rules'];
-    this.flyff.world.setDetailRadius(rules.detailStreamRadiusMeters ?? 100);
+    this.flyff.world.setDetailRadius(rules.detailStreamRadiusMeters ?? 180);
     this.flyff.world.setStripManmadeStructures(rules.stripManmadeStructures !== false);
   }
 
@@ -493,19 +494,6 @@ export class MuWorldEngine {
     if (version !== this.mapVersion || this.disposed) return;
     this.comboUntil = 0;
     const map = getMapById(mapId);
-    this.currentMap = map;
-    this.flyff.world.setCrater(map.id === 'crater_ceniza');
-    const rules = getAdminConfigSync()['world-rules'];
-    const mapKey = map.id === 'puerto_bruma' ? 'puerto' : map.id === 'crater_ceniza' ? 'ceniza' : map.id;
-    const adminMap = rules.maps?.[map.id] || rules.maps?.[mapKey];
-
-    const sky = Color3.FromHexString(map.skyColor || '#1e3554');
-    this.scene.clearColor = new Color4(sky.r, sky.g, sky.b, 1);
-    this.scene.fogMode = Scene.FOGMODE_LINEAR;
-    this.scene.fogColor = sky;
-    this.scene.fogStart = 145;
-    this.scene.fogEnd = 400;
-
     if (savedPose && Number.isFinite(savedPose.x) && Number.isFinite(savedPose.z)) {
       this.heroX = savedPose.x;
       this.heroZ = savedPose.z;
@@ -516,7 +504,7 @@ export class MuWorldEngine {
       this.heroRotY = Math.PI;
     }
 
-    await this.flyff.world.stream(this.heroX, this.heroZ, 0, 160);
+    await this.flyff.world.stream(this.heroX, this.heroZ, 0, 450);
     if (version !== this.mapVersion || this.disposed) return;
     this.heroY = this.flyff.world.getGroundHeight(this.heroX, this.heroZ);
     this.heroRoot.position.set(this.heroX, this.heroY, this.heroZ);
@@ -524,14 +512,30 @@ export class MuWorldEngine {
       this.flyff.actor.root.rotation.y = this.heroRotY;
     }
 
-    this.setupWeatherParticles(adminMap?.weather || (mapId === 'crater_ceniza' || mapId === 'losttower' ? 'embers' : mapId === 'robledal' || mapId === 'noria' ? 'petals' : 'leaves'));
+    this.applyRegion(nearestRegion(MU_MAPS,this.heroX,this.heroZ));
+    if (this.entityRevision !== getLiveWorld().revision || this.entityHeroId !== this.heroStats?.id) await this.rebuildMapEntities();
+    this.emitTelemetry();
+    this.emitMinimap();
+  }
+
+  private applyRegion(map: MapDef) {
+    this.currentMap = map;
+    const rules = getAdminConfigSync()['world-rules'];
+    const mapKey = map.id === 'puerto_bruma' ? 'puerto' : map.id === 'crater_ceniza' ? 'ceniza' : map.id;
+    const adminMap = rules.maps?.[map.id] || rules.maps?.[mapKey];
+
+    const sky = Color3.FromHexString(map.skyColor || '#1e3554');
+    this.scene.clearColor = new Color4(sky.r, sky.g, sky.b, 1);
+    this.scene.fogMode = Scene.FOGMODE_LINEAR;
+    this.scene.fogColor = sky;
+    this.scene.fogStart = 230;
+    this.scene.fogEnd = 450;
+
+    this.setupWeatherParticles(adminMap?.weather || (map.id === 'crater_ceniza' || map.id === 'losttower' ? 'embers' : map.id === 'robledal' || map.id === 'noria' ? 'petals' : 'leaves'));
     if (this.mode === 'playing') {
       soundSynth.setMapMusic(adminMap?.musicTheme || mapKey);
     }
 
-    await this.rebuildMapEntities();
-    this.emitTelemetry();
-    this.emitMinimap();
   }
 
   private setupWeatherParticles(weather: string): void {
@@ -597,8 +601,8 @@ export class MuWorldEngine {
     soundSynth.playJump(this.heroStats?.sex);
   }
 
-  public getHeroPose(): { x: number; z: number; rotY: number } {
-    return { x: this.heroX, z: this.heroZ, rotY: this.heroRotY };
+  public getHeroPose(): { x: number; z: number; rotY: number; mapId: MapId } {
+    return { x: this.heroX, z: this.heroZ, rotY: this.heroRotY, mapId: nearestRegion(MU_MAPS,this.heroX,this.heroZ).id };
   }
 
   public getEffectiveCityRadius(): number {
@@ -1031,6 +1035,7 @@ export class MuWorldEngine {
   }
 
   private entityRevision = '';
+  private entityHeroId?: string;
   private resettingEntities = false;
 
   public async applyWorldRevision(onReset?: () => void): Promise<void> {
@@ -1073,17 +1078,9 @@ export class MuWorldEngine {
     this.clearMapEntities();
     const live = getLiveWorld();
     const adminCfg = getAdminConfigSync();
-    const mapKey =
-      this.currentMap.id === 'puerto_bruma'
-        ? 'puerto'
-        : this.currentMap.id === 'crater_ceniza'
-          ? 'ceniza'
-          : this.currentMap.id;
-
-    // 1. Merge NPCs from ADMIN/npcs.json for matching map + map defaults
     const adminNpcsRaw = Array.isArray(adminCfg.npcs?.npcs) ? adminCfg.npcs.npcs : [];
     const adminMapNpcs: Array<NpcDef & { model?: string }> = adminNpcsRaw
-      .filter((n: any) => canonicalMap(live.npcs[n.id]?.mapId ?? n.mapId) === this.currentMap.id)
+      .filter((n: any) => MU_MAPS.some(m=>m.id === canonicalMap(live.npcs[n.id]?.mapId ?? n.mapId)))
       .map((n: any) => {
         const rule = live.npcs[n.id];
         const pos = normalizeAdminCoord(rule?.x ?? Number(n.x || 0), rule?.z ?? Number(n.z || 0));
@@ -1092,7 +1089,7 @@ export class MuWorldEngine {
           name: rule?.name ?? n.name,
           title: n.title || 'Comerciante',
           role: (n.role === 'potions' ? 'potion' : n.role === 'elf' || n.role === 'wizard' ? 'magic' : n.role) as NpcDef['role'],
-          mapId: this.currentMap.id,
+          mapId: canonicalMap(rule?.mapId ?? n.mapId) as MapId,
           x: pos.x,
           z: pos.z,
           colorHex: '#fbbf24',
@@ -1101,9 +1098,8 @@ export class MuWorldEngine {
         };
       });
 
-    const npcList: Array<NpcDef & { model?: string }> =
-      adminMapNpcs.length > 0 || adminNpcsRaw.some((n: any) => canonicalMap(n.mapId) === this.currentMap.id)
-        ? adminMapNpcs : this.currentMap.npcs;
+    const npcList: Array<NpcDef & { model?: string }> = [...adminMapNpcs,...MU_MAPS.flatMap(map => adminNpcsRaw.some((n: any) => canonicalMap(n.mapId) === map.id)
+      ? [] : map.npcs)];
 
     const npcGlbs = [...new Set(npcList.map((n) => resolveNpcGlb(n.model, n.role)))];
     await Promise.all(npcGlbs.map((g) => this.getOrLoadEntityContainer(g)));
@@ -1131,17 +1127,48 @@ export class MuWorldEngine {
       }
 
       root.position.set(npcDef.x, gy, npcDef.z);
-      root.rotation.y = Math.atan2(this.currentMap.spawn.x - npcDef.x, this.currentMap.spawn.z - npcDef.z);
+      const city = getMapById(npcDef.mapId).spawn;
+      root.rotation.y = Math.atan2(city.x - npcDef.x,city.z - npcDef.z);
       this.npcs.push({ def: npcDef, root, animations });
     }
 
-    // 2. Build rich monster pool covering 40+ distinct Flyff GLBs from public/mugroup/monstruos/
+    for (const {id,from,target,x,z} of capitalPortals(MU_MAPS)) {
+      const root = new TransformNode(id,this.scene);
+      root.position.set(x,this.flyff.world.getGroundHeight(x,z),z);
+      if (!this.headless) {
+        this.portalMaterial ??= new StandardMaterial('madrigal-portal',this.scene);
+        this.portalMaterial.emissiveColor = Color3.FromHexString('#48a6ed');
+        const ring = MeshBuilder.CreateTorus(id + '-ring',{diameter:3,thickness:.22},this.scene);
+        ring.parent = root;
+        ring.rotation.x = Math.PI / 2;
+        ring.position.y = 1.8;
+        ring.material = this.portalMaterial;
+        ring.isPickable = false;
+      }
+      this.npcs.push({root,animations:[],def:{id,name:target.name,title:'Teletransporte',mapId:from.id,
+        role:'guard',x,z,colorHex:'#48a6ed',warpTarget:target.id}});
+    }
+
+    this.monsterRoamLimit = 40;
+    this.monsterScan = 0;
+    const size = MU_MAPS[0].worldSize;
+    const camps = scatterCamps('madrigal',size,5000,(x,z)=>!this.isSafePoint(x,z,24));
+    const sites = new Map(camps.filter((_,i)=>i%CAMP_SIZE === 0).map(m=>[m.camp,nearestRegion(MU_MAPS,m.x,m.z).id]));
+    for (const map of MU_MAPS) this.addRegionMonsters(map,camps.filter(m=>sites.get(m.camp) === map.id),live,adminCfg);
+    this.entityRevision = live.revision;
+    this.entityHeroId = this.heroStats?.id;
+  }
+
+  private portalMaterial?: StandardMaterial;
+
+  private addRegionMonsters(map: MapDef, camps: ReturnType<typeof scatterCamps>, live: ReturnType<typeof getLiveWorld>, adminCfg: ReturnType<typeof getAdminConfigSync>) {
+    const mapKey = map.id === 'puerto_bruma' ? 'puerto' : map.id === 'crater_ceniza' ? 'ceniza' : map.id;
     const extraCatalog = Array.isArray(adminCfg.monsters?.extraCatalog) ? adminCfg.monsters.extraCatalog : [];
     const glbOverrides: Record<string, string> = adminCfg.monsters?.glbOverrides || {};
     type Template = { def: MonsterSpawnDef; glb: string; speciesId?: string; attackFx?: string };
     const templates: Template[] = [];
-    const naturalTemplates: Template[] = BESTIARY.filter(s => s.map === this.currentMap.id).map((species, i) => {
-      const level = Math.min(this.currentMap.maxLevel, this.currentMap.minLevel + (i % 12));
+    const naturalTemplates: Template[] = BESTIARY.filter(s => s.map === map.id).map((species, i) => {
+      const level = Math.min(map.maxLevel, map.minLevel + (i % 12));
       return { speciesId: species.id, glb: resolveMonsterGlb(glbOverrides[species.id], i), def: {
         id: species.id, name: species.name, type: 'spider', level, scale: 1,
         colorHex: species.power.colorHex, maxHp: 110 + level * 30,
@@ -1151,27 +1178,27 @@ export class MuWorldEngine {
     });
     templates.push(...naturalTemplates);
 
-    for (let i = 0; i < this.currentMap.monsters.length; i++) {
-      const t = this.currentMap.monsters[i];
+    for (let i = 0; i < map.monsters.length; i++) {
+      const t = map.monsters[i];
       const key = t.name.toLowerCase().split(' ')[0];
       const glb = resolveMonsterGlb(glbOverrides[t.id] || glbOverrides[key] || 'monstruos/' + key + '.glb', i);
       templates.push({ def: t, glb });
     }
 
     // Add map-aligned extraCatalog entries + rotate through all 43 distinct GLBs so 40+ monster classes exist cleanly
-    const pool = extraCatalog.filter((e: any) => !e.map || e.map === mapKey || e.map === this.currentMap.id);
+    const pool = extraCatalog.filter((e: any) => !e.map || e.map === mapKey || e.map === map.id);
     for (let i = 0; i < pool.length; i++) {
       const e = pool[i];
-      const levelScale = Math.max(1, this.currentMap.minLevel);
-      const isNativeMap = e.map === mapKey || e.map === this.currentMap.id;
-      const lvl = isNativeMap ? Number(e.level || levelScale) : Math.max(this.currentMap.minLevel, Math.min(this.currentMap.maxLevel, Number(e.level || levelScale)));
+      const levelScale = Math.max(1, map.minLevel);
+      const isNativeMap = e.map === mapKey || e.map === map.id;
+      const lvl = isNativeMap ? Number(e.level || levelScale) : Math.max(map.minLevel, Math.min(map.maxLevel, Number(e.level || levelScale)));
       const def: MonsterSpawnDef = {
         id: `adm_${e.id}`,
         name: e.name || e.id,
         type: 'spider',
         level: lvl,
-        maxHp: Math.round(Number(e.hp || 180) * (isNativeMap ? 1 : 0.65 + this.currentMap.minLevel / 50)),
-        attack: Math.round(Number(e.damage || 22) * (isNativeMap ? 1 : 0.65 + this.currentMap.minLevel / 60)),
+        maxHp: Math.round(Number(e.hp || 180) * (isNativeMap ? 1 : 0.65 + map.minLevel / 50)),
+        attack: Math.round(Number(e.damage || 22) * (isNativeMap ? 1 : 0.65 + map.minLevel / 60)),
         defense: Math.round(lvl * 0.9),
         xpReward: Number(e.xp || lvl * 18),
         zenMin: Math.round(Number(e.zen || lvl * 40) * 0.7),
@@ -1193,7 +1220,7 @@ export class MuWorldEngine {
       if (presentGlbs.has(glb)) continue;
       presentGlbs.add(glb);
       const base = glb.replace('monstruos/', '').replace('.glb', '');
-      const lvl = this.currentMap.minLevel + (i % Math.max(1, this.currentMap.maxLevel - this.currentMap.minLevel));
+      const lvl = map.minLevel + (i % Math.max(1, map.maxLevel - map.minLevel));
       templates.push({
         def: {
           id: `glb_${base}`,
@@ -1215,16 +1242,14 @@ export class MuWorldEngine {
 
     const total = Number(adminCfg['world-rules'].maps?.[mapKey]?.targetMonsterCount) || 40000;
     const campCount = Math.min(5000, Math.max(1, Math.ceil(total / CAMP_SIZE)));
-    const camps = scatterCamps(this.currentMap.id, this.currentMap.worldSize || 3072, campCount,
-      (x, z) => !this.isSafePoint(x, z, 24));
-    const placements: { entry: Template; mx: number; mz: number; angle: number; camp?: number }[] = camps.map(
+    const placements: { entry: Template; mx: number; mz: number; angle: number; camp?: number }[] = camps.slice(0,campCount*CAMP_SIZE).map(
       ({ camp, x, z, heading }) => ({ entry: templates[camp % templates.length], mx: x, mz: z, angle: heading, camp }),
     );
 
-    const extraGroups = live.groups.filter(group => group.map === this.currentMap.id);
+    const extraGroups = live.groups.filter(group => group.map === map.id);
     const groups = [...(Array.isArray(adminCfg.monsters?.groups) ? adminCfg.monsters.groups.slice(0, 40) : []), ...extraGroups];
     for (const group of groups) {
-      if (!group || (group.map !== mapKey && group.map !== this.currentMap.id)) continue;
+      if (!group || (group.map !== mapKey && group.map !== map.id)) continue;
       let template = templates.find(t => t.def.id === group.monsterId || t.def.id === 'adm_' + group.monsterId);
       if (!template) {
         const species = SPECIES_BY_ID.get(group.monsterId);
@@ -1232,7 +1257,7 @@ export class MuWorldEngine {
         const original = MU_MAPS.flatMap(map => map.monsters).find(m => m.id === group.monsterId);
         const catalog = extraCatalog.find((row: { id: string }) => 'adm_' + row.id === group.monsterId);
         if (species || model || original || catalog) {
-          const level = catalog?.level ?? original?.level ?? this.currentMap.minLevel;
+          const level = catalog?.level ?? original?.level ?? map.minLevel;
           template = {
             def: original ?? { id: group.monsterId, name: species?.name ?? model?.name ?? catalog?.name ?? group.monsterId,
               type: 'spider', level, maxHp: catalog?.hp ?? 110 + level * 30, attack: catalog?.damage ?? 11 + level * 2,
@@ -1269,12 +1294,10 @@ export class MuWorldEngine {
       }
     }
 
-    this.monsterRoamLimit = 40;
-    this.monsterScan = 0;
     for (const [i, { entry, mx, mz, angle, camp }] of placements.entries()) {
       const def = applyMonsterRule(entry.def, live.monsters[entry.def.id]);
       const mob: ActiveMonster = {
-        id: `mob-${this.currentMap.id}-${i}`,
+        id: `mob-${map.id}-${i}`,
         def, glbFile: entry.glb, camp,
         attackFx: entry.attackFx || (def.isBoss ? 'sfx_sklmerfury01' : 'sfx_hitsword01'),
         scaledLevel: def.level, maxHp: def.maxHp, hp: def.maxHp, attack: def.attack, defense: def.defense,
@@ -1287,7 +1310,6 @@ export class MuWorldEngine {
       this.monsters.push(mob);
       this.monsterGrid.add(mx, mz, mob);
     }
-    this.entityRevision = live.revision;
   }
 
   private nearMonsters(radius: number): Iterable<ActiveMonster> {
@@ -1301,8 +1323,8 @@ export class MuWorldEngine {
 
   private syncInvasions(now: number): void {
     if (!this.heroStats || this.resettingEntities) return;
-    const active = worldInvasions().filter(e=>e.map === this.currentMap.id).map(e=>({e,w:invasionWindow(e,now)})).filter(v=>v.w.active);
-    const key = [this.heroStats.id,this.currentMap.id,...active.map(v=>v.e.id+v.w.start)].join('/');
+    const active = worldInvasions().map(e=>({e,w:invasionWindow(e,now)})).filter(v=>v.w.active);
+    const key = [this.heroStats.id,...active.map(v=>v.e.id+v.w.start)].join('/');
     if (key === this.eventKey) return;
     const retained = new Map(this.eventMobs.map(m=>[m.id,m]));
     this.eventKey = key; this.eventMobs = [];
@@ -1310,7 +1332,7 @@ export class MuWorldEngine {
     for (const {e,w} of active) {
       const rule = getLiveWorld().invasions[e.id];
       const sites = rule?.x !== undefined && rule.z !== undefined ? positionsAt({x: rule.x, z: rule.z}, e.count)
-        : invasionSites(e,w.start,this.currentMap.worldSize || 3072,(x,z)=>this.isSafePoint(x,z,45));
+        : invasionSites(e,w.start,this.currentMap.worldSize || 3072,(x,z)=>this.isSafePoint(x,z,45) || nearestRegion(MU_MAPS,x,z).id !== e.map);
       const hp = (level99?.hp ?? 11400)*e.hp, attack = (level99?.damage ?? 425)*e.attack;
       sites.forEach(({x,z},i)=>{
         if (this.isSafePoint(x,z,45)) return;
@@ -1508,7 +1530,7 @@ export class MuWorldEngine {
     if (this.streamAccum >= 0.25 && !this.streamingDetails && (moving || this.streamAccum > 2)) {
       this.streamAccum = 0;
       this.streamingDetails = true;
-      void this.flyff.world.stream(this.heroX, this.heroZ, 0, 210)
+      void this.flyff.world.stream(this.heroX, this.heroZ, 0, 450)
         .catch((error: unknown) => console.warn('No se pudo cargar el terreno cercano', error))
         .finally(() => { this.streamingDetails = false; });
     }
@@ -1533,6 +1555,8 @@ export class MuWorldEngine {
     this.uiTickAccum += dt;
     if (this.uiTickAccum >= 0.25) {
       this.uiTickAccum = 0;
+      const region = nearestRegion(MU_MAPS,this.heroX,this.heroZ);
+      if (region.id !== this.currentMap.id) this.applyRegion(region);
       this.emitTelemetry();
       this.emitMinimap();
       this.checkNearbyNpc();
