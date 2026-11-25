@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { MU_CLASSES } from '../data/muSkillsAndClasses';
 import type { HeroClass, MuAccount, MuCharacter, SyncStatusInfo } from '../types/game';
-import { PWAInstallButton } from './PWAInstallButton';
+import { PWAInstallButton, isStandaloneApp } from './PWAInstallButton';
 
 interface ClassicLoginFlowProps {
   stage: 'login' | 'character_select';
@@ -95,8 +95,11 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
   const [authTab, setAuthTab] = useState<'login' | 'register' | 'recover'>('login');
 
   // Login & Change Password state
-  const [username, setUsername] = useState(accounts[0]?.username || 'lorencia');
-  const [password, setPassword] = useState('123456');
+  const [username, setUsername] = useState(() => {
+    try { return isStandaloneApp() ? localStorage.getItem('mu-last-local-user') ?? '' : ''; }
+    catch { return ''; }
+  });
+  const [password, setPassword] = useState('');
   const [showChangePwd, setShowChangePwd] = useState(false);
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -155,6 +158,8 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
       const res = await onLogin(username, password);
       if (!res.ok) {
         setAuthError(res.error || 'Error de acceso.');
+      } else {
+        setPassword('');
       }
     } finally {
       setBusy(false);
@@ -382,7 +387,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
                       type="text"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      placeholder="ej. lorencia"
+                      placeholder="Tu ID de cuenta"
                       required
                       className="w-full min-h-[44px] rounded-lg bg-[#080b12] border border-slate-700 px-3 text-sm text-slate-100 focus:outline-none focus:border-amber-500"
                     />
@@ -429,21 +434,11 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
                     </div>
                   )}
 
-                  {accounts.length > 0 && !showChangePwd && (
-                    <div className="flex items-center gap-2 flex-wrap text-[11px] text-slate-400">
-                      <span>Cuentas en IndexedDB:</span>
-                      {accounts.map((acc) => (
-                        <button
-                          key={acc.id}
-                          type="button"
-                          onClick={() => {
-                            setUsername(acc.username);
-                            if (acc.username === 'lorencia') setPassword('123456');
-                          }}
-                          className="text-amber-300 hover:underline font-mono-tabular cursor-pointer"
-                        >
-                          {acc.username}
-                        </button>
+                  {isStandaloneApp() && !showChangePwd && accounts.some(acc => acc.id !== 'acc-lorencia-demo') && (
+                    <div className="flex flex-wrap gap-2 text-xs" aria-label="Cuentas locales">
+                      {accounts.filter(acc => acc.id !== 'acc-lorencia-demo').map(acc => (
+                        <button key={acc.id} type="button" className="text-amber-300 underline"
+                          onClick={() => { setUsername(acc.username); setPassword(''); }}>{acc.username}</button>
                       ))}
                     </div>
                   )}
@@ -587,7 +582,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
                           setRecUser(e.target.value);
                           setRecQuestions(null);
                         }}
-                        placeholder="ej. lorencia"
+                        placeholder="Tu ID de cuenta"
                         required
                         className="w-full min-h-[42px] rounded-lg bg-[#080b12] border border-slate-700 px-3 text-sm text-slate-100"
                       />

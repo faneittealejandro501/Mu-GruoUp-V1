@@ -215,90 +215,31 @@ let initPromise: Promise<void> | null = null;
 
 export async function initDexie(): Promise<void> {
   if (initPromise) return initPromise;
-  initPromise = (async () => {
-    await db.open();
-    const accountCount = await db.accounts.count();
-    if (accountCount === 0) {
-      const nowIso = new Date().toISOString();
-      const nowMs = Date.now();
-      const demoAccId = 'acc-lorencia-demo';
-      const demoCharId = 'char-kaelen-dk';
-      const demoAccount: MuAccount = {
-        id: demoAccId,
-        username: 'lorencia',
-        passwordHash: await hashSecret('123456'),
-        secretQ1: '¿Nombre de la ciudad inicial de MU?',
-        secretA1: await hashSecret('lorencia'),
-        secretQ2: '¿Color de la joya Jewel of Bless?',
-        secretA2: await hashSecret('morado'),
-        createdAt: nowIso,
-        updatedAt: nowMs,
-        isSynced: false,
-      };
-      const flaris = getMapById('flaris');
-      const demoItems = getStarterItemsForMuClass(demoCharId, 'Kaelen', 'DK');
-      const demoChar: MuCharacter = normalizeCharacterRecord({
-        id: demoCharId,
-        accountId: demoAccId,
-        name: 'Kaelen',
-        classType: 'DK',
-        sex: 'male',
-        level: 12,
-        resets: 0,
-        xp: 180,
-        xpToNext: getXpRequiredForLevel(12),
-        hp: 520,
-        maxHp: 520,
-        mp: 240,
-        maxMp: 240,
-        sd: 320,
-        maxSd: 320,
-        ag: 140,
-        maxAg: 140,
-        str: 68,
-        agi: 42,
-        vit: 45,
-        ene: 20,
-        cmd: 15,
-        unspentPoints: 14,
-        skillPoints: 3,
-        skillRanks: { dk_slash: 2, dk_twisting: 2 },
-        specialization: 'balanced',
-        unlockedAchievements: [],
-        duelWins: 0,
-        duelLosses: 0,
-        zen: 18500,
-        bless: 4,
-        soul: 4,
-        chaos: 2,
-        life: 2,
-        harmony: 1,
-        creation: 1,
-        talisman: 1,
-        kills: 0,
-        currentMapId: 'flaris',
-        lastX: flaris.spawn.x,
-        lastZ: flaris.spawn.z,
-        lastRotY: Math.PI,
-        equipment: demoItems.filter((i) => i.isEquipped),
-        inventory: demoItems.filter((i) => !i.isEquipped),
-        updatedAt: nowMs,
-        isSynced: false,
-      });
-
-      await db.transaction('rw', db.accounts, db.characters, db.items, async () => {
-        await db.accounts.put(demoAccount);
-        await db.characters.put(demoChar);
-        await db.items.bulkPut(demoItems);
-      });
-    }
-  })();
+  initPromise = db.open().then(() => undefined).catch(error => {
+    initPromise = null;
+    throw error;
+  });
   return initPromise;
+}
+
+const ADMIN_PROFILE_ID = 'acc-world-admin';
+export async function getWorldAdminProfile(username: string): Promise<MuAccount> {
+  await initDexie();
+  return db.transaction('rw', db.accounts, async () => {
+    const existing = await db.accounts.get(ADMIN_PROFILE_ID);
+    if (existing) return existing;
+    const account: MuAccount = {
+      id: ADMIN_PROFILE_ID, username, passwordHash: '', secretQ1: '', secretA1: '',
+      secretQ2: '', secretA2: '', createdAt: new Date().toISOString(), updatedAt: Date.now(), isSynced: false,
+    };
+    await db.accounts.add(account);
+    return account;
+  });
 }
 
 export async function listAccounts(): Promise<MuAccount[]> {
   await initDexie();
-  return db.accounts.toArray();
+  return (await db.accounts.toArray()).filter(account => account.id !== ADMIN_PROFILE_ID);
 }
 
 export async function loginAccount(
@@ -307,7 +248,7 @@ export async function loginAccount(
 ): Promise<{ ok: true; account: MuAccount } | { ok: false; error: string }> {
   await initDexie();
   const cleanUser = username.trim().toLowerCase();
-  const acc = (await db.accounts.toArray()).find((a) => a.username.toLowerCase() === cleanUser);
+  const acc = (await db.accounts.toArray()).find((a) => a.id !== ADMIN_PROFILE_ID && a.username.toLowerCase() === cleanUser);
   if (!acc) {
     return { ok: false, error: `No existe la cuenta "${cleanUser}" en IndexedDB.` };
   }
@@ -338,7 +279,7 @@ export async function registerAccount(input: {
     return { ok: false, error: 'Debes completar ambas preguntas secretas.' };
   }
 
-  const existing = (await db.accounts.toArray()).find((a) => a.username.toLowerCase() === cleanUser);
+  const existing = (await db.accounts.toArray()).find((a) => a.id !== ADMIN_PROFILE_ID && a.username.toLowerCase() === cleanUser);
   if (existing) {
     return { ok: false, error: `El usuario "${cleanUser}" ya está registrado en este dispositivo.` };
   }
@@ -366,7 +307,7 @@ export async function changeAccountPassword(
 ): Promise<{ ok: boolean; error?: string }> {
   await initDexie();
   const cleanUser = username.trim().toLowerCase();
-  const acc = (await db.accounts.toArray()).find((a) => a.username.toLowerCase() === cleanUser);
+  const acc = (await db.accounts.toArray()).find((a) => a.id !== ADMIN_PROFILE_ID && a.username.toLowerCase() === cleanUser);
   if (!acc) return { ok: false, error: 'Cuenta no encontrada.' };
   if ((await hashSecret(oldPassword)) !== acc.passwordHash) {
     return { ok: false, error: 'La contraseña actual no coincide.' };
@@ -388,7 +329,7 @@ export async function getLocalRecoveryQuestions(
 ): Promise<{ found: true; secretQ1: string; secretQ2: string } | { found: false }> {
   await initDexie();
   const cleanUser = username.trim().toLowerCase();
-  const acc = (await db.accounts.toArray()).find((a) => a.username.toLowerCase() === cleanUser);
+  const acc = (await db.accounts.toArray()).find((a) => a.id !== ADMIN_PROFILE_ID && a.username.toLowerCase() === cleanUser);
   if (!acc) return { found: false };
   return { found: true, secretQ1: acc.secretQ1, secretQ2: acc.secretQ2 };
 }
@@ -401,7 +342,7 @@ export async function recoverAccountLocal(
 ): Promise<{ ok: boolean; error?: string }> {
   await initDexie();
   const cleanUser = username.trim().toLowerCase();
-  const acc = (await db.accounts.toArray()).find((a) => a.username.toLowerCase() === cleanUser);
+  const acc = (await db.accounts.toArray()).find((a) => a.id !== ADMIN_PROFILE_ID && a.username.toLowerCase() === cleanUser);
   if (!acc) return { ok: false, error: 'Cuenta no encontrada en IndexedDB.' };
   const h1 = await hashSecret(normalizeAnswer(answer1));
   const h2 = await hashSecret(normalizeAnswer(answer2));

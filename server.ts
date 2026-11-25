@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 import { WebSocketServer, WebSocket } from 'ws';
 import { GoogleGenAI, Type } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
+import { mountWorldAdmin } from './src/server/worldAdmin.ts';
 import { mountPrivateBackup } from './src/server/privateBackup.ts';
 import type {
   AsyncDuelChallenge,
@@ -434,7 +435,13 @@ async function startServer() {
     });
   });
 
-  // API: ADMIN Folder Config Read & Live Edit
+  mountWorldAdmin(app, {
+    file: process.env.MU_WORLD_FILE || path.join(__dirname, 'ADMIN', 'live-world.local.json'),
+    password: process.env.MU_ADMIN_PASSWORD,
+    origins: process.env.MU_WORLD_ORIGINS,
+  });
+
+  // API: configuración base de ADMIN
   const ADMIN_DIR = path.join(__dirname, 'ADMIN');
   const ADMIN_SECTIONS = new Set([
     'world-rules',

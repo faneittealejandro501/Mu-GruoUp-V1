@@ -27,6 +27,7 @@ import {
   getLocalRecoveryQuestions,
   getSharedLedger,
   initDexie,
+  getWorldAdminProfile,
   listAccounts,
   listCharactersByAccount,
   loadButtonLayouts,
@@ -88,6 +89,9 @@ import { loadAdminConfig } from './services/adminConfigService';
 import { LocalSyncManager } from './services/syncManager';
 import { ApkSyncDrawer } from './components/ApkSyncDrawer';
 import { CharacterStatsModal } from './components/CharacterStatsModal';
+import { WorldAdminPanel } from './components/WorldAdminPanel';
+import { isStandaloneApp } from './components/PWAInstallButton';
+import { ADMIN_USERNAME, closeWorldAdmin, openWorldAdmin, refreshLiveWorld } from './services/liveWorldService';
 import { ClassicLoginFlow } from './components/ClassicLoginFlow';
 import { MapWarpModal } from './components/MapWarpModal';
 import { MuHudOverlay, type WorldTelemetryInfo } from './components/MuHudOverlay';
@@ -150,6 +154,8 @@ export default function App() {
   const [worldLoading,setWorldLoading] = useState(false);
   const [engineError, setEngineError] = useState<string | null>(null);
   const canvasMountRef = useRef<HTMLDivElement | null>(null);
+  const [adminPanelOpen, setAdminPanelOpen] = useState(false);
+  const [worldAdmin, setWorldAdmin] = useState<Awaited<ReturnType<typeof openWorldAdmin>> | null>(null);
   const engineRef = useRef<MuWorldEngine | null>(null);
   const syncRef = useRef<LocalSyncManager | null>(null);
 
@@ -391,7 +397,7 @@ export default function App() {
       setDuelRecords(duels);
       setServerChallenges(challenges);
 
-      const activeAccId = preferAccountId || currentAccRef.current?.id || accList[0]?.id;
+      const activeAccId = preferAccountId || currentAccRef.current?.id;
       if (activeAccId) {
         const chars = await listCharactersByAccount(activeAccId);
         setCharacters(chars);
@@ -420,7 +426,7 @@ export default function App() {
 
   // Support ?autostart=1 and optional ?map=lorencia to jump directly into active gameplay
   useEffect(() => {
-    if (autoStartedRef.current) return;
+    if (autoStartedRef.current || !currentAccount || screenStage !== 'character_select') return;
     const params = new URLSearchParams(window.location.search);
     if (!params.has('autostart')) return;
     if (!character || !engineRef.current || worldLoadRef.current) return;
@@ -432,10 +438,6 @@ export default function App() {
       charRef.current = targetChar;
       setCharacter(targetChar);
       void updateCharacter(targetChar);
-    }
-    if (accounts[0] && !currentAccount) {
-      setCurrentAccount(accounts[0]);
-      cloudSyncManager.setActiveAccountId(accounts[0].id);
     }
     (async () => {
       worldLoadRef.current = true;
@@ -462,7 +464,26 @@ export default function App() {
         setWorldLoading(false);
       }
     })();
-  }, [character, accounts, currentAccount]);
+  }, [character, currentAccount, screenStage]);
+
+  const applyPublishedWorld = useCallback(async () => {
+    await refreshLiveWorld();
+    if (worldLoadRef.current || (screenStageRef.current !== 'playing' && screenStageRef.current !== 'paused')) return;
+    const engine = engineRef.current;
+    if (!engine) return;
+    await engine.applyWorldRevision(() => {
+      setActiveNpc(null);
+      setActiveDrawer(drawer => drawer === 'npc' ? 'none' : drawer);
+    });
+  }, []);
+
+  useEffect(() => {
+    const check = () => { void applyPublishedWorld().catch(console.error); };
+    check();
+    window.addEventListener('online', check);
+    const timer = window.setInterval(check, 15_000);
+    return () => { window.removeEventListener('online', check); clearInterval(timer); };
+  }, [applyPublishedWorld]);
 
   // Boot Dexie IndexedDB & CloudSyncManager (Golden Rule timestamp sync)
   useEffect(() => {
@@ -1130,12 +1151,13 @@ export default function App() {
   pressAttackRef.current = handlePressAttack;
 
   useEffect(() => {
-    engineRef.current?.setAutoHuntEnabled(helperEnabled);
-  }, [helperEnabled, screenStage]);
+    engineRef.current?.setAutoHuntEnabled(helperEnabled && !adminPanelOpen);
+  }, [helperEnabled, screenStage, adminPanelOpen]);
 
   // Global keyboard shortcuts while playing/paused
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (adminPanelOpen) return;
       if (
         document.activeElement?.tagName === 'INPUT' ||
         document.activeElement?.tagName === 'TEXTAREA' ||
@@ -1196,14 +1218,31 @@ export default function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [screenStage, activeDrawer, editMode, handlePressAttack, handleCastSkill]);
+  }, [screenStage, activeDrawer, editMode, handlePressAttack, handleCastSkill, adminPanelOpen]);
 
   const handleLogin = async (username: string, password: string) => {
-    const res = await loginAccount(username, password);
-    if (!res.ok) return { ok: false, error: res.error };
-    setCurrentAccount(res.account);
-    cloudSyncManager.setActiveAccountId(res.account.id);
-    const chars = await listCharactersByAccount(res.account.id);
+    const wantsAdmin = username.trim().toLowerCase() === ADMIN_USERNAME;
+    let account: MuAccount;
+    if (wantsAdmin) {
+      try {
+        const access = await openWorldAdmin(password);
+        account = await getWorldAdminProfile(ADMIN_USERNAME);
+        setWorldAdmin(access);
+        setAdminPanelOpen(true);
+      } catch (error) {
+        return { ok: false, error: error instanceof Error ? error.message : 'No se pudo abrir ADMIN.' };
+      }
+    } else {
+      const res = await loginAccount(username, password);
+      if (!res.ok) return { ok: false, error: res.error };
+      account = res.account;
+      try {
+        if (isStandaloneApp() && account.id !== 'acc-lorencia-demo') localStorage.setItem('mu-last-local-user', account.username);
+      } catch { /* remembering the local ID is optional */ }
+    }
+    setCurrentAccount(account);
+    cloudSyncManager.setActiveAccountId(wantsAdmin ? null : account.id);
+    const chars = await listCharactersByAccount(account.id);
     setCharacters(chars);
     if (chars[0]) {
       await selectAndHydrateCharacter(chars[0]);
@@ -1225,9 +1264,12 @@ export default function App() {
     secretQ2: string;
     secretA2: string;
   }) => {
+    if (input.username.trim().toLowerCase() === ADMIN_USERNAME) return { ok: false, error: 'Ese ID está reservado.' };
     const res = await registerAccount(input);
     if (!res.ok) return { ok: false, error: res.error };
     setAccounts(await listAccounts());
+    try { if (isStandaloneApp()) localStorage.setItem('mu-last-local-user', res.account.username); }
+    catch { /* remembering the local ID is optional */ }
     setCurrentAccount(res.account);
     cloudSyncManager.setActiveAccountId(res.account.id);
     setCharacters([]);
@@ -1669,6 +1711,12 @@ export default function App() {
         <div><small>✧ &nbsp; CRÓNICAS DEL REINO &nbsp; ✧</small><h1>MuGro'up</h1><p>{loadingScene.label}…</p>
         <progress aria-label={loadingScene.label} /></div></div>}
       <OfflineIndicator />
+      {worldAdmin && !adminPanelOpen && <button type="button"
+        className="fixed z-40 bottom-2 left-2 realm-button px-2 text-xs min-h-[34px]"
+        onClick={() => setAdminPanelOpen(true)}>ADMIN</button>}
+      {worldAdmin && adminPanelOpen && <WorldAdminPanel initial={worldAdmin.config} session={worldAdmin.session}
+        onClose={() => setAdminPanelOpen(false)}
+        onPublished={() => { void applyPublishedWorld().catch(console.error); }} />}
 
       {isPortraitMobile && (
         <div className="fixed top-2 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-lg bg-[#161c2a] border border-amber-500/70 px-3 py-1.5 shadow-xl max-w-[94vw]">
@@ -1705,6 +1753,9 @@ export default function App() {
           onCreateCharacter={handleCreateCharacter}
           onEnterWorld={handleEnterWorld}
           onLogoutAccount={() => {
+            if (worldAdmin) closeWorldAdmin(worldAdmin.session.token);
+            setWorldAdmin(null);
+            setAdminPanelOpen(false);
             setCurrentAccount(null);
             cloudSyncManager.setActiveAccountId(null);
             engineRef.current?.setMode('title');

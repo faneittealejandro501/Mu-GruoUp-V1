@@ -1,6 +1,8 @@
 import creatureModels from '../data/creatureModels.json' with {type:'json'};
 import { flightHeight } from './content/WingRig';
-import { INVASIONS, invasionSites, invasionWindow, type Invasion } from '../data/worldInvasions';
+import { invasionSites, invasionWindow, type Invasion } from '../data/worldInvasions';
+import { applyMonsterRule, canonicalMap, modelMonsters, positionsAt } from '../data/liveWorld';
+import { getLiveWorld, refreshLiveWorld, worldInvasions } from '../services/liveWorldService';
 import { CAMP_SIZE, scatterCamps, SpawnGrid } from './encounters';
 import {
   AnimationGroup,
@@ -487,7 +489,7 @@ export class MuWorldEngine {
     savedPose?: { x: number; z: number; rotY?: number },
   ): Promise<void> {
     const version = ++this.mapVersion;
-    await loadAdminConfig();
+    await Promise.all([loadAdminConfig(), refreshLiveWorld()]);
     if (version !== this.mapVersion || this.disposed) return;
     this.comboUntil = 0;
     const map = getMapById(mapId);
@@ -1028,8 +1030,29 @@ export class MuWorldEngine {
     }
   }
 
-  private async rebuildMapEntities(): Promise<void> {
-    const token = ++this.entityBuildToken;
+  private entityRevision = '';
+  private resettingEntities = false;
+
+  public async applyWorldRevision(onReset?: () => void): Promise<void> {
+    if (this.disposed || this.resettingEntities || this.entityRevision === getLiveWorld().revision) return;
+    this.resettingEntities = true;
+    onReset?.();
+    const version = this.mapVersion;
+    ++this.entityBuildToken;
+    this.clearMapEntities();
+    this.emitMinimap();
+    try {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      if (this.disposed || version !== this.mapVersion) return;
+      await this.rebuildMapEntities();
+      this.emitMinimap();
+    } finally {
+      this.resettingEntities = false;
+    }
+  }
+
+  private clearMapEntities(): void {
+    this.comboUntil = 0;
     for (const m of this.loadedMonsters) this.unloadMonster(m);
     this.monsterGrid.clear();
     for (const n of this.npcs) {
@@ -1040,8 +1063,15 @@ export class MuWorldEngine {
     this.monsters = [];
     this.eventMobs = []; this.eventKey = '';
     this.npcs = [];
+    if (this.lastNearbyNpcId !== null) this.callbacks.onNearbyNpcChange?.(null);
+    this.lastNearbyNpcId = null;
     this.loots = [];
+  }
 
+  private async rebuildMapEntities(): Promise<void> {
+    const token = ++this.entityBuildToken;
+    this.clearMapEntities();
+    const live = getLiveWorld();
     const adminCfg = getAdminConfigSync();
     const mapKey =
       this.currentMap.id === 'puerto_bruma'
@@ -1053,12 +1083,13 @@ export class MuWorldEngine {
     // 1. Merge NPCs from ADMIN/npcs.json for matching map + map defaults
     const adminNpcsRaw = Array.isArray(adminCfg.npcs?.npcs) ? adminCfg.npcs.npcs : [];
     const adminMapNpcs: Array<NpcDef & { model?: string }> = adminNpcsRaw
-      .filter((n: any) => n.mapId === this.currentMap.id || n.mapId === mapKey)
+      .filter((n: any) => canonicalMap(live.npcs[n.id]?.mapId ?? n.mapId) === this.currentMap.id)
       .map((n: any) => {
-        const pos = normalizeAdminCoord(Number(n.x || 0), Number(n.z || 0));
+        const rule = live.npcs[n.id];
+        const pos = normalizeAdminCoord(rule?.x ?? Number(n.x || 0), rule?.z ?? Number(n.z || 0));
         return {
           id: n.id,
-          name: n.name,
+          name: rule?.name ?? n.name,
           title: n.title || 'Comerciante',
           role: (n.role === 'potions' ? 'potion' : n.role === 'elf' || n.role === 'wizard' ? 'magic' : n.role) as NpcDef['role'],
           mapId: this.currentMap.id,
@@ -1066,12 +1097,13 @@ export class MuWorldEngine {
           z: pos.z,
           colorHex: '#fbbf24',
           model: n.model,
-          stock: n.stock && typeof n.stock === 'object' ? n.stock : undefined,
+          stock: rule?.stock ?? (n.stock && typeof n.stock === 'object' ? n.stock : undefined),
         };
       });
 
     const npcList: Array<NpcDef & { model?: string }> =
-      adminMapNpcs.length > 0 ? adminMapNpcs : this.currentMap.npcs;
+      adminMapNpcs.length > 0 || adminNpcsRaw.some((n: any) => canonicalMap(n.mapId) === this.currentMap.id)
+        ? adminMapNpcs : this.currentMap.npcs;
 
     const npcGlbs = [...new Set(npcList.map((n) => resolveNpcGlb(n.model, n.role)))];
     await Promise.all(npcGlbs.map((g) => this.getOrLoadEntityContainer(g)));
@@ -1189,10 +1221,30 @@ export class MuWorldEngine {
       ({ camp, x, z, heading }) => ({ entry: templates[camp % templates.length], mx: x, mz: z, angle: heading, camp }),
     );
 
-    const groups = adminCfg.monsters?.groups;
-    if (Array.isArray(groups)) for (const group of groups.slice(0, 40)) {
+    const extraGroups = live.groups.filter(group => group.map === this.currentMap.id);
+    const groups = [...(Array.isArray(adminCfg.monsters?.groups) ? adminCfg.monsters.groups.slice(0, 40) : []), ...extraGroups];
+    for (const group of groups) {
       if (!group || (group.map !== mapKey && group.map !== this.currentMap.id)) continue;
-      const template = templates.find(t => t.def.id === group.monsterId || t.def.id === 'adm_' + group.monsterId);
+      let template = templates.find(t => t.def.id === group.monsterId || t.def.id === 'adm_' + group.monsterId);
+      if (!template) {
+        const species = SPECIES_BY_ID.get(group.monsterId);
+        const model = modelMonsters.find(m => m.id === group.monsterId);
+        const original = MU_MAPS.flatMap(map => map.monsters).find(m => m.id === group.monsterId);
+        const catalog = extraCatalog.find((row: { id: string }) => 'adm_' + row.id === group.monsterId);
+        if (species || model || original || catalog) {
+          const level = catalog?.level ?? original?.level ?? this.currentMap.minLevel;
+          template = {
+            def: original ?? { id: group.monsterId, name: species?.name ?? model?.name ?? catalog?.name ?? group.monsterId,
+              type: 'spider', level, maxHp: catalog?.hp ?? 110 + level * 30, attack: catalog?.damage ?? 11 + level * 2,
+              defense: level, xpReward: catalog?.xp ?? 25 + level * 16, zenMin: catalog?.zen ?? level * 10,
+              zenMax: catalog?.zen ?? level * 30, scale: 1, colorHex: species?.power.colorHex ?? '#fbbf24',
+              powers: species ? [species.power] : undefined },
+            glb: resolveMonsterGlb(model?.glb ?? glbOverrides[species?.id ?? catalog?.id ?? ''] ?? catalog?.glb ??
+              (original && 'monstruos/' + original.name.toLowerCase().split(' ')[0] + '.glb'), 0),
+            speciesId: species?.id, attackFx: catalog?.sfx,
+          };
+        }
+      }
       if (!template || !Number.isFinite(group.x) || !Number.isFinite(group.z)) continue;
       const number = (value: unknown, fallback: number, min: number, max: number) =>
         typeof value === 'number' && Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback;
@@ -1220,7 +1272,7 @@ export class MuWorldEngine {
     this.monsterRoamLimit = 40;
     this.monsterScan = 0;
     for (const [i, { entry, mx, mz, angle, camp }] of placements.entries()) {
-      const def = entry.def;
+      const def = applyMonsterRule(entry.def, live.monsters[entry.def.id]);
       const mob: ActiveMonster = {
         id: `mob-${this.currentMap.id}-${i}`,
         def, glbFile: entry.glb, camp,
@@ -1235,6 +1287,7 @@ export class MuWorldEngine {
       this.monsters.push(mob);
       this.monsterGrid.add(mx, mz, mob);
     }
+    this.entityRevision = live.revision;
   }
 
   private nearMonsters(radius: number): Iterable<ActiveMonster> {
@@ -1243,27 +1296,30 @@ export class MuWorldEngine {
 
   private *localCandidates(radius: number): Iterable<ActiveMonster> {
     yield* this.monsterGrid.near(this.heroX, this.heroZ, radius + this.monsterRoamLimit);
-    for (const m of this.eventMobs) if (Math.hypot(m.x-this.heroX,m.z-this.heroZ) <= radius + this.monsterRoamLimit) yield m;
+    for (const m of this.eventMobs) if (Math.hypot(m.x-this.heroX,m.z-this.heroZ) <= radius + (m.def.roamRadius ?? 40)) yield m;
   }
 
   private syncInvasions(now: number): void {
-    if (!this.heroStats) return;
-    const active = INVASIONS.filter(e=>e.map === this.currentMap.id).map(e=>({e,w:invasionWindow(e,now)})).filter(v=>v.w.active);
+    if (!this.heroStats || this.resettingEntities) return;
+    const active = worldInvasions().filter(e=>e.map === this.currentMap.id).map(e=>({e,w:invasionWindow(e,now)})).filter(v=>v.w.active);
     const key = [this.heroStats.id,this.currentMap.id,...active.map(v=>v.e.id+v.w.start)].join('/');
     if (key === this.eventKey) return;
     const retained = new Map(this.eventMobs.map(m=>[m.id,m]));
     this.eventKey = key; this.eventMobs = [];
     const level99 = getAdminConfigSync().monsters?.extraCatalog?.find((m:{level:number})=>m.level===99);
     for (const {e,w} of active) {
-      const sites = invasionSites(e,w.start,this.currentMap.worldSize || 3072,(x,z)=>this.isSafePoint(x,z,45));
+      const rule = getLiveWorld().invasions[e.id];
+      const sites = rule?.x !== undefined && rule.z !== undefined ? positionsAt({x: rule.x, z: rule.z}, e.count)
+        : invasionSites(e,w.start,this.currentMap.worldSize || 3072,(x,z)=>this.isSafePoint(x,z,45));
       const hp = (level99?.hp ?? 11400)*e.hp, attack = (level99?.damage ?? 425)*e.attack;
       sites.forEach(({x,z},i)=>{
+        if (this.isSafePoint(x,z,45)) return;
         const id = ['invasion',this.heroStats!.id,e.id,i].join(':');
         if (localStorage.getItem(id) === String(w.start)) return;
         const old = retained.get(id);
         if (old?.respawnAt === w.start) { this.eventMobs.push(old); retained.delete(id); return; }
         this.eventMobs.push({id, invasion:e, def:{id,name:e.name,type:'boss',level:99,maxHp:hp,attack,defense:99,
-          xpReward:0,zenMin:e.zen,zenMax:e.zen,scale:2,colorHex:e.color,isBoss:true,roamRadius:40},
+          xpReward:0,zenMin:e.zen,zenMax:e.zen,scale:2,colorHex:e.color,isBoss:true,roamRadius:rule?.roamRadius ?? 40},
           glbFile:e.model,attackFx:'sfx_sklmerfury01',scaledLevel:99,maxHp:hp,hp,attack,defense:99,
           x,z,homeX:x,homeZ:z,rotY:0,animations:[],activeAnim:'',hitCooldown:1,powerCooldown:3,actionTime:0,respawnAt:w.start,alive:true});
       });
@@ -1543,8 +1599,8 @@ export class MuWorldEngine {
       } else if (!safeCity && d < aggroRadius && d > 2.4 && homeDist < (mob.def.roamRadius ?? 40)) {
         const dirX = (this.heroX - mob.x) / d;
         const dirZ = (this.heroZ - mob.z) / d;
-        const nx = mob.x + dirX * 3.4 * dt;
-        const nz = mob.z + dirZ * 3.4 * dt;
+        const nx = mob.x + dirX * (mob.def.moveSpeed ?? 3.4) * dt;
+        const nz = mob.z + dirZ * (mob.def.moveSpeed ?? 3.4) * dt;
         if (!this.isSafePoint(nx, nz, 2) && Math.hypot(nx - mob.homeX, nz - mob.homeZ) <= (mob.def.roamRadius ?? 40)) {
           mob.x = nx;
           mob.z = nz;

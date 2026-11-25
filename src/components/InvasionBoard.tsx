@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
-import { INVASIONS, invasionWindow } from '../data/worldInvasions';
+import { worldInvasions } from '../services/liveWorldService';
+import { invasionWindow } from '../data/worldInvasions';
 import { getMapById } from '../data/muWorldData';
 export function InvasionBoard() {
   const [open,setOpen] = useState(false), [now,setNow] = useState(Date.now);
@@ -14,7 +15,7 @@ export function InvasionBoard() {
       <div className="realm-board max-w-xl w-full max-h-[92dvh] overflow-auto p-4">
         <header className="flex justify-between"><h2 className="font-display text-xl text-amber-200">Invasiones del reino</h2><button aria-label="Cerrar eventos" onClick={()=>setOpen(false)}>✕</button></header>
         <p className="text-sm mb-2 text-stone-300">Cada invasión dura 1 h 20 min. Los jefes aparecen fuera de las capitales.</p>
-        {INVASIONS.map(e=>{const w=invasionWindow(e,now);return <article key={e.id} className="flex items-center gap-3 border-t border-amber-900/60 py-2">
+        {worldInvasions().map(e=>{const w=invasionWindow(e,now);return <article key={e.id} className="flex items-center gap-3 border-t border-amber-900/60 py-2">
           <img src={'./mugroup/ui/event-'+e.id+'.webp'} width="64" height="64" alt=""/>
           <div><strong style={{color:e.color}}>{e.name} ×{e.count}</strong> · {getMapById(e.map).name}
           <p className="text-amber-200 text-xs">{w.active?'Activa hasta':'Próxima a las'} {new Date(w.active?w.end:w.next).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
