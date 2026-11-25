@@ -263,9 +263,9 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
               : 'Guardado local'}
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <AndroidDownloadLink />
-          <PWAInstallButton onOpenApkCenter={onOpenApkCenter} />
+          <PWAInstallButton />
           {stage === 'character_select' && currentAccount && (
             <button
               onClick={onLogoutAccount}
