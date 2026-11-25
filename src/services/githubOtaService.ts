@@ -1,3 +1,4 @@
+import { androidClient } from './androidRooms';
 import { offlineInstallReady } from './offlineInstall';
 import manifest from '../../public/ota-manifest.json' with { type: 'json' };
 
@@ -49,7 +50,7 @@ export function setLinkedGithubRepoSlug(raw: string): string {
 
 export function getConfiguredCloudApiUrl(): string {
   try {
-    return (localStorage.getItem(LS_CLOUD_URL_KEY) || import.meta.env.VITE_BACKUP_URL || '').trim().replace(/\/+$/g, '');
+    return (localStorage.getItem(LS_CLOUD_URL_KEY) || import.meta.env.VITE_BACKUP_URL || import.meta.env.VITE_WORLD_SERVER_URL || '').trim().replace(/\/+$/g, '');
   } catch {
     return '';
   }
@@ -135,7 +136,29 @@ export async function applyWebOtaUpdate(): Promise<boolean> {
   }
 }
 
-export function watchWebUpdates(saveLocalProgress: () => Promise<boolean>): () => void {
+export function watchWebUpdates(saveLocalProgress: () => Promise<boolean>, status: (value:string) => void): () => void {
+  if (androidClient) {
+    let stopped = false, busy = false, next = 0;
+    const tick = async () => {
+      if (stopped || busy || document.hidden) return;
+      const state = androidClient?.updateState?.();
+      status(state === 'ready' ? 'Lista' : state === 'downloading' ? 'Descargando' : '');
+      if (state === 'ready') {
+        busy = true;
+        try { if (await saveLocalProgress() && !stopped) androidClient?.applyClient?.(); }
+        finally { busy = false; }
+      } else if (navigator.onLine && Date.now() >= next) {
+        next = Date.now() + 60000;
+        androidClient?.checkClient?.();
+      }
+    };
+    const run = () => { void tick().catch(() => {}); };
+    const online = () => { next = 0; run(); };
+    const timer = window.setInterval(run,2000);
+    window.addEventListener('online',online);
+    run();
+    return () => { stopped = true; clearInterval(timer); window.removeEventListener('online',online); };
+  }
   if (!('serviceWorker' in navigator)) return () => {};
   const workers = navigator.serviceWorker;
   let stopped = false;
@@ -156,6 +179,7 @@ export function watchWebUpdates(saveLocalProgress: () => Promise<boolean>): () =
       if (!active?.version || (!replacement && active.version === LOCAL_VERSION)) return;
       if (!await offlineInstallReady(active.version)) return;
       if (!stopped && await saveLocalProgress() && !stopped) {
+        status('Lista');
         reloading = true;
         window.location.reload();
       }
@@ -189,11 +213,24 @@ export function watchWebUpdates(saveLocalProgress: () => Promise<boolean>): () =
   window.addEventListener('pageshow', onCheck);
   window.addEventListener('focus', onCheck);
   document.addEventListener('visibilitychange', onCheck);
-  void workers.ready.then(onCheck);
+  const updateFound = () => {
+    const installing = registration?.installing;
+    if (!installing || !workers.controller) return;
+    status('Descargando');
+    installing.addEventListener('statechange', () => {
+      if (!stopped && installing.state === 'redundant') status('');
+    });
+  };
+  let registration: ServiceWorkerRegistration | undefined;
+  void workers.ready.then(reg => {
+    if (stopped) return;
+    registration = reg; reg.addEventListener('updatefound',updateFound); updateFound(); onCheck();
+  });
   onCheck();
   const timer = window.setInterval(onCheck, 60_000);
   return () => {
     stopped = true;
+    registration?.removeEventListener('updatefound',updateFound);
     workers.removeEventListener('controllerchange', onControllerChange);
     window.removeEventListener('online', onCheck);
     window.removeEventListener('pageshow', onCheck);

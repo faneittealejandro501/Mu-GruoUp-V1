@@ -52,3 +52,30 @@ test('private backup preserves new inventory and only a recovery code can decryp
     await rm(directory,{ recursive:true,force:true });
   }
 });
+
+test('another client opens the wrapped backup by normalized login; collisions cannot replace it', async () => {
+  const {publishAccountLink,lookupAccountLink,loginNameTaken} = await import('../src/services/accountLink.ts');
+  const root = await mkdtemp(join(tmpdir(),'mu-login-'));
+  const app = express(); app.use(express.json()); mountPrivateBackup(app,root);
+  const server = app.listen(0,'127.0.0.1'); await once(server,'listening');
+  const endpoint = new URL('http://127.0.0.1:'+ (server.address() as AddressInfo).port+'/api/private-backup');
+  try {
+    const code=generateRecoveryCode();
+    const account={id:'a',username:'hero',passwordHash:'verifier',updatedAt:1} as MuAccount;
+    await syncEncryptedBackup(endpoint,code,{account,characters:[]});
+    assert.equal(await loginNameTaken(endpoint,'hero'),false);
+    await publishAccountLink(endpoint,'hero','verifier',code,1);
+    assert.equal(await loginNameTaken(endpoint,' HERO '),true);
+    const restored=await lookupAccountLink(endpoint,' HERO ','verifier');
+    assert.deepEqual((await syncEncryptedBackup(endpoint,restored)).account,account);
+    await assert.rejects(lookupAccountLink(endpoint,'hero','wrong'));
+    await assert.rejects(publishAccountLink(endpoint,'hero','other',generateRecoveryCode(),3),/otra cuenta/);
+    await publishAccountLink(endpoint,'hero','new',code,2);
+    await publishAccountLink(endpoint,'hero','verifier',code,1);
+    await assert.rejects(lookupAccountLink(endpoint,'hero','verifier'));
+    assert.equal(await lookupAccountLink(endpoint,'hero','new'),code);
+  } finally {
+    await new Promise<void>(resolve=>server.close(()=>resolve()));
+    await rm(root,{recursive:true,force:true});
+  }
+});

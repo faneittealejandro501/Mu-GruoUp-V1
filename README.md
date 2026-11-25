@@ -49,7 +49,13 @@ La Web y la PWA comprueban actualizaciones de la ubicación instalada al recuper
 
 ## Copia privada y salas
 
-Pages hospeda el juego estático. Para sincronizar partidas desde Pages, ejecuta el servidor Node en un servicio HTTPS, con `MU_BACKUP_DIR` apuntando a un volumen persistente y `MU_BACKUP_ORIGINS` con los orígenes autorizados, separados por comas. Pon la URL en **Web / APKweb**, crea una copia y guarda el código de recuperación. El cliente sincroniza solo la cuenta activa y cifra la cuenta, los personajes y su equipo antes de transmitirlos; GitHub recibe código y compilaciones. Para recuperar desde otro dispositivo, abre el panel, indica el mismo servidor y restaura con el código; luego puedes restablecer la contraseña mediante tus preguntas de recuperación.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:f3499918a1cde39fc6899a291a654fdd508cf10815c640cab5300caa5a4f0e4a -->
+
+Pages publica el cliente compilado. Ejecuta el servidor Node detrás de HTTPS con un volumen persistente en `MU_BACKUP_DIR`. Configura `MU_BACKUP_ORIGINS=https://faneittealejandro501.github.io,https://apk.mugroup.invalid` y la variable de Actions `VITE_BACKUP_URL` con la URL del servidor antes de compilar. Al jugar con conexión se vincula la cuenta activa y se guardan sus personajes e inventario cifrados. En otro dispositivo entra con el mismo ID y contraseña después del primer respaldo. Sin conexión se usa la copia local; los cambios pendientes se envían al volver a jugar con internet. Si dos jugadores registran el mismo ID sin conexión, sus partidas se mantienen separadas. El código manual sigue disponible para recuperación.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 <!-- coderabbit-ai-generated:v1 -->
 
@@ -57,7 +63,13 @@ Pages hospeda el juego estático. Para sincronizar partidas desde Pages, ejecuta
 
 ## APK Android: cliente completo y multijugador local
 
-Abre **Descargar APK Android** desde la pantalla de acceso o el panel **Web / APKweb** para guardar el instalador `MuGro-up-Android.apk`. Abre el archivo descargado en Android para instalarlo. Si prefieres instalar el juego en el navegador, usa **Instalar PWA**. En GitHub Actions, el artefacto **mugroup-android** también contiene el instalador. El APK incluye los modelos, mapas, texturas, audio y datos base; puedes crear una cuenta y jugar en solitario desde el primer inicio sin internet. Requiere Android 8 o posterior y Android System WebView actualizado. El APK guarda su propia partida: exporta tu respaldo JSON de la PWA e impórtalo desde **Web / APKweb** en Android.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:e9b67157c3a6579bf4eb37ac6ac1124bd7b4f22c636e8be7c94ff39fad388160 -->
+
+Pulsa **Descargar APK** para solicitar el instalador completo. **Instalar PWA** comprueba que todos los recursos estén guardados antes de ofrecer la instalación. El APK incluye el juego para el primer arranque sin internet y usa el mismo servidor de cuentas que la web.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 - **Wi-Fi local:** abre el APK en los dos dispositivos y conéctalos a la misma red o al punto de acceso del anfitrión. El anfitrión crea la sala y comparte la dirección IP que muestra el juego y el código. El invitado introduce ambos en **Salas locales → Wi-Fi local**. Usa IPv4 y el puerto TCP 32183; una red que aísla a sus clientes puede impedir la conexión.
 - **Bluetooth directo:** empareja primero los dispositivos en **Ajustes de Android → Bluetooth**. En el APK, permite el acceso a dispositivos cercanos. El anfitrión crea una sala Bluetooth, y el invitado usa el código y selecciona el equipo anfitrión de la lista de dispositivos emparejados. No hace falta activar el Wi-Fi ni tener acceso a internet.
@@ -74,7 +86,13 @@ bun run build:android dist/MuGro-up-Android.apk
 
 Sirve `dist/` para ofrecer la descarga desde la web. El comando genera el APK y su índice `dist/android-download.json`. Si ejecutas `bun run build:android` sin indicar el destino, deja el instalador en `build/android/` para pruebas locales.
 
-GitHub Actions publica los dos archivos junto al sitio de la rama principal. Si no hay firma permanente, el botón identifica la compilación como **prueba**. Incluye todo el juego y tiene un identificador separado del APK de distribución. Si cambia la clave de prueba entre compilaciones, exporta tu partida antes de desinstalar la anterior e importa la copia en la nueva.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:8a4b0ae9ea0c096d1ffd9c637e98d30dfbf457a2d7d1420352cf6a22e3d83cbd -->
+
+GitHub Actions publica el APK junto al sitio. Sin firma permanente genera un paquete de prueba separado. El cliente Android consulta los metadatos HTTPS del sitio publicado, verifica el SHA-256 de la descarga y monta únicamente sus recursos web al reiniciar. Los cambios nativos requieren instalar un nuevo APK firmado.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 Para que Android pueda instalar las futuras actualizaciones sobre la aplicación existente, configura en Actions los secretos `MU_ANDROID_KEYSTORE_B64`, `MU_ANDROID_KEY_ALIAS`, `MU_ANDROID_STORE_PASSWORD` y `MU_ANDROID_KEY_PASSWORD`. Conserva la misma clave e incrementa la versión de `public/ota-manifest.json` en cada actualización.
 
@@ -110,7 +128,13 @@ Las reglas base de ADMIN viajan en cada compilación. El panel publica cambios d
 
 <!-- /coderabbit-ai-generated:v1 -->
 
-Cada región incluye 4.000 campamentos de diez monstruos y los grupos adicionales configurados en ADMIN. Las posiciones se generan por mapa y solo se cargan modelos cerca del jugador. En `world-rules.json`, `stripManmadeStructures` permite ocultar construcciones si se prefiere.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:2b75c09f88a0c7c163a860fc7cdd0d366d816efb168de085069e918e27455ff2 -->
+
+Cada mapa reparte campamentos de diez monstruos por las zonas exteriores. La separación mínima al aparecer es de 100 metros entre miembros de campamentos distintos. El terreno disponible limita el total; las ciudades siguen protegidas. Los grupos manuales de ADMIN y las invasiones conservan sus propias posiciones.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 <!-- coderabbit-ai-generated:v1 -->
 

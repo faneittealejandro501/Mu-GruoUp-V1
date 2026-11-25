@@ -45,6 +45,7 @@ public final class GameActivity extends Activity {
     private static final int IMPORT = 401;
     private static final int EXPORT = 402;
     private WebView web;
+    private ClientUpdates updates;
     private RoomRadio radio;
     private ValueCallback<Uri[]> fileResult;
     private String exportContents;
@@ -55,6 +56,7 @@ public final class GameActivity extends Activity {
             View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
             View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
             View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+        updates = new ClientUpdates(this);
         web = new WebView(this);
         web.setBackgroundColor(Color.rgb(12, 16, 24));
         setContentView(web);
@@ -84,7 +86,7 @@ public final class GameActivity extends Activity {
                     java.util.Arrays.stream(path.split("/")).anyMatch(part -> part.equals("..") || part.equals("."))) return missing();
                 if (request.isForMainFrame() && !"/index.html".equals(path)) return missing();
                 try {
-                    InputStream asset = getAssets().open("client" + path);
+                    InputStream asset = updates.open(path);
                     String type = mime(path);
                     String charset = type.startsWith("text/") || type.equals("application/json") ||
                         type.equals("application/javascript") ? "UTF-8" : null;
@@ -198,6 +200,11 @@ public final class GameActivity extends Activity {
     }
 
     private final class Bridge {
+        @JavascriptInterface public void checkClient() { updates.check(); }
+        @JavascriptInterface public String updateState() { return updates.status(); }
+        @JavascriptInterface public void applyClient() {
+            if ("ready".equals(updates.status())) runOnUiThread(() -> { web.clearCache(true); recreate(); });
+        }
         @JavascriptInterface public void host(String session, String transport) {
             runOnUiThread(() -> { if (web != null) radio.start(session, true, transport, ""); });
         }
@@ -275,6 +282,7 @@ public final class GameActivity extends Activity {
         if (fileResult != null) fileResult.onReceiveValue(null);
         web.removeJavascriptInterface("MuAndroid");
         web.destroy();
+        updates.close();
         web = null;
         super.onDestroy();
     }

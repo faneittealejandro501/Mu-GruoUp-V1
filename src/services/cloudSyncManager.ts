@@ -1,5 +1,6 @@
+import { loginNameTaken, lookupAccountLink, publishAccountLink } from './accountLink';
 import { generateRecoveryCode, syncEncryptedBackup } from './privateBackup';
-import { db, getKvSetting, initDexie, normalizeCharacterRecord, setKvSetting } from '../db/dexieStore';
+import { db, hashSecret, getKvSetting, initDexie, normalizeCharacterRecord, setKvSetting } from '../db/dexieStore';
 import { getConfiguredCloudApiUrl } from './githubOtaService';
 import type {
   AsyncDuelChallenge,
@@ -30,10 +31,20 @@ class CloudSyncManager {
     error: null,
   };
 
+  private async syncPending() {
+    if (this.activeAccountId) await this.syncNow();
+    const prefix = 'privateBackup:pending:';
+    const queued = await db.kvMeta.where('key').startsWith(prefix).toArray();
+    for (const entry of queued) {
+      const id = entry.key.slice(prefix.length);
+      if (id !== this.activeAccountId && navigator.onLine) await this.syncNow(id);
+    }
+  }
+
   private onOnline = () => {
     this.apiProbeState = 'unknown';
     this.updateStatus({ isOnline: true, isOfflineMode: false });
-    void this.syncNow();
+    void this.syncPending().catch(() => {});
   };
 
   private onOffline = () => {
@@ -79,13 +90,13 @@ class CloudSyncManager {
     window.addEventListener('offline', this.onOffline);
     void this.refreshPendingCount();
     if (navigator.onLine) {
-      void this.syncNow();
+      void this.syncPending().catch(() => {});
     }
     if (this.pollTimer === null) {
       this.pollTimer = window.setInterval(() => {
         void this.refreshPendingCount();
         if (navigator.onLine) {
-          void this.syncNow();
+          void this.syncPending().catch(() => {});
         }
       }, 25000);
     }
@@ -185,6 +196,8 @@ class CloudSyncManager {
     let applied = false;
     await db.transaction('rw', db.accounts, db.characters, db.items, db.kvMeta, async () => {
       const account = await db.accounts.get(copy.account.id);
+      if (copy.account.id === 'acc-world-admin' || copy.account.id === 'acc-lorencia-demo' ||
+          (account && account.username !== copy.account.username)) throw new Error('La copia pertenece a otra cuenta.');
       const byName = await db.accounts.where('username').equals(copy.account.username).first();
       if (byName && byName.id !== copy.account.id) throw new Error('Ya existe otra cuenta local con ese nombre.');
       if (!account || account.updatedAt <= copy.account.updatedAt) {
@@ -198,6 +211,8 @@ class CloudSyncManager {
           await db.characters.put(normalizeCharacterRecord({ ...ch, isSynced: true }));
           await db.items.where('charId').equals(ch.id).delete();
           const gear = [...(ch.equipment || []), ...(ch.inventory || [])];
+          const owners = await db.items.bulkGet(gear.map(item => item.id));
+          if (owners.some(item => item && item.charId !== ch.id)) throw new Error('Conflicto de inventario.');
           await db.items.bulkPut(gear.map(item => ({ ...item, charId: ch.id })));
           applied = true;
         } else {
@@ -266,23 +281,53 @@ class CloudSyncManager {
     }
   }
 
-  public async syncNow(): Promise<{ ok: boolean; message: string }> {
+  public async nameTaken(username: string) {
+    if (!navigator.onLine) return false;
+    try { return await loginNameTaken(await this.backupEndpoint(),username); }
+    catch { return false; } // Offline registration is reconciled on reconnect.
+  }
+
+  public async restoreLogin(username: string, password: string) {
+    const endpoint = await this.backupEndpoint();
+    const verifier = await hashSecret(password);
+    const code = await lookupAccountLink(endpoint, username, verifier);
+    const copy = await syncEncryptedBackup(endpoint, code);
+    if (copy.account.username !== username.trim().toLowerCase() || copy.account.passwordHash !== verifier)
+      throw new Error('ID o contraseña incorrectos.');
+    await this.applyBackup(copy, endpoint, code);
+  }
+
+  public async syncNow(queuedId?: string): Promise<{ ok: boolean; message: string }> {
     if (this.syncing) return { ok: true, message: 'Sincronización en curso…' };
-    const id = this.activeAccountId;
+    const id = queuedId || this.activeAccountId;
     if (!navigator.onLine || !id) return { ok: false, message: 'Progreso disponible en este dispositivo.' };
     this.syncing = true;
     try {
-      const saved = await getKvSetting<{ endpoint: string; code: string } | null>('privateBackup:' + id, null);
-      if (!saved) return { ok: false, message: 'Activa la copia privada para sincronizar el progreso.' };
       const endpoint = await this.backupEndpoint();
+      if (id === 'acc-lorencia-demo') return {ok:false, message:'Demo local.'};
+      const saved = await db.transaction('rw', db.kvMeta, async () => {
+        const key = 'privateBackup:' + id;
+        const previous = await getKvSetting<{endpoint:string;code:string} | null>(key,null);
+        if (previous) return previous;
+        const binding = {endpoint:endpoint.href,code:generateRecoveryCode()};
+        await setKvSetting(key,binding);
+        return binding;
+      });
       if (endpoint.href !== saved.endpoint) {
         return { ok: false, message: 'Activa la copia privada para el servidor seleccionado.' };
       }
-      if (this.activeAccountId !== id) return { ok: false, message: 'La cuenta activa cambió.' };
+      if (!queuedId && this.activeAccountId !== id) return { ok: false, message: 'La cuenta activa cambió.' };
       this.updateStatus({ syncing: true, error: null });
       const copy = await syncEncryptedBackup(endpoint, saved.code, await this.snapshot(id));
       await this.applyBackup(copy, endpoint, saved.code);
+      const marker = 'privateBackup:link:' + id;
+      const stamp = endpoint.href + ':' + copy.account.passwordHash + ':' + saved.code;
+      if (await getKvSetting(marker,'') !== stamp) {
+        await publishAccountLink(endpoint,copy.account.username,copy.account.passwordHash,saved.code,copy.account.updatedAt);
+        await setKvSetting(marker,stamp);
+      }
       await this.refreshPendingCount();
+      await db.kvMeta.delete('privateBackup:pending:' + id);
       const message = `Copia privada al día (${copy.characters.length} héroes)`;
       this.updateStatus({ lastSyncedAt: new Date().toISOString(), lastMessage: message, isOfflineMode: false });
       return { ok: true, message };

@@ -8,6 +8,9 @@ interface AndroidBridge {
   stop(session: string): void;
   exportBackup(contents: string): void;
   openDownload(): void;
+  checkClient?(): void;
+  updateState?(): string;
+  applyClient?(): void;
 }
 export const androidClient = (window as Window & { MuAndroid?: AndroidBridge }).MuAndroid;
 

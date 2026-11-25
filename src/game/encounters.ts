@@ -21,17 +21,18 @@ export function scatterCamps(seed: string, size: number, count: number, allowed:
   };
 
   const members: CampMember[] = [];
-  const columns = Math.ceil(Math.sqrt(count));
+  const pitch = 128; // 100 m clear between the outer members, including jitter.
+  const columns = Math.floor((size - 2 * (MARGIN + CAMP_RADIUS)) / pitch);
   const strata = Array.from({ length: columns * columns }, (_, i) => i);
   for (let i = strata.length - 1; i > 0; i--) {
     const j = Math.floor(random() * (i + 1));
     [strata[i], strata[j]] = [strata[j], strata[i]];
   }
   const edge = MARGIN + CAMP_RADIUS;
-  for (let attempt = 0; members.length < count * CAMP_SIZE && attempt < count * 12; attempt++) {
+  for (let attempt = 0; members.length < count * CAMP_SIZE && attempt < strata.length; attempt++) {
     const cell = strata[attempt % strata.length];
-    const x = edge + ((cell % columns) + random()) / columns * (size - edge * 2);
-    const z = edge + (Math.floor(cell / columns) + random()) / columns * (size - edge * 2);
+    const x = edge + ((cell % columns) + 0.5) * pitch + random() * 4;
+    const z = edge + (Math.floor(cell / columns) + 0.5) * pitch + random() * 4;
     if (!allowed(x, z)) continue;
     const heading = random() * Math.PI * 2;
     const camp = members.length / CAMP_SIZE;

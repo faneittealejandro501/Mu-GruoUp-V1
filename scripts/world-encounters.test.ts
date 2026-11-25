@@ -4,7 +4,7 @@ import { CAMP_SIZE, scatterCamps, SpawnGrid } from '../src/game/encounters.ts';
 import { flightHeight } from '../src/game/content/WingRig.ts';
 import { waterGeometry } from '../src/game/content/WaterSurface.ts';
 
-test('four maps have 4,000 repeatable camps of ten, clear of protected areas', () => {
+test('four maps have spaced repeatable camps of ten, clear of protected areas', () => {
   const maps = ['flaris', 'robledal', 'puerto_bruma', 'crater_ceniza'];
   const centers = [[1336, 1281], [520, 2440], [2300, 2390], [2540, 490]];
   const outside = (x: number, z: number, radius: number) => centers.every(([sx, sz]) => Math.hypot(x - sx, z - sz) > radius);
@@ -12,7 +12,11 @@ test('four maps have 4,000 repeatable camps of ten, clear of protected areas', (
   for (const map of maps) {
     const create = () => scatterCamps(map, 3072, 4000, (x, z) => outside(x, z, 524));
     const members = create();
-    assert.equal(members.length, 40000);
+    assert.ok(members.length > 2500 && members.length % 10 === 0);
+    const anchors = members.filter((_, i) => i % 10 === 0);
+    for (const [i,a] of anchors.entries()) for (const b of anchors.slice(i+1))
+      assert.ok(Math.hypot(a.x-b.x,a.z-b.z) >= 124);
+    assert.equal(new Set(anchors.map(a => (a.x > 1536 ? 1 : 0) + (a.z > 1536 ? 2 : 0))).size,4);
     assert.deepEqual(members, create());
     firstSites.add(members[0].x);
     const grid = new SpawnGrid<(typeof members)[number]>();

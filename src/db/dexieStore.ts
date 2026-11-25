@@ -296,7 +296,10 @@ export async function registerAccount(input: {
     updatedAt: Date.now(),
     isSynced: false,
   };
-  await db.accounts.put(account);
+  await db.transaction('rw',db.accounts,db.kvMeta,async () => {
+    await db.accounts.put(account);
+    await db.kvMeta.put({key:'privateBackup:pending:' + account.id,value:true});
+  });
   return { ok: true, account };
 }
 
