@@ -3,14 +3,17 @@ const CELL = 64;
 const MARGIN = 40;
 const CAMP_RADIUS = 12;
 
+export interface SpawnSite { x: number; z: number; model: string; level: number; name: string }
+
 export interface CampMember {
+  site?: SpawnSite;
   camp: number;
   x: number;
   z: number;
   heading: number;
 }
 
-export function scatterCamps(seed: string, size: number, count: number, allowed: (x: number, z: number) => boolean): CampMember[] {
+export function scatterCamps(seed: string, size: number, count: number, allowed: (x: number, z: number) => boolean, sites: SpawnSite[] = []): CampMember[] {
   let state = 2166136261;
   for (const char of seed) state = Math.imul(state ^ char.charCodeAt(0), 16777619);
   const random = () => {
@@ -29,18 +32,27 @@ export function scatterCamps(seed: string, size: number, count: number, allowed:
     [strata[i], strata[j]] = [strata[j], strata[i]];
   }
   const edge = MARGIN + CAMP_RADIUS;
-  for (let attempt = 0; members.length < count * CAMP_SIZE && attempt < strata.length; attempt++) {
-    const cell = strata[attempt % strata.length];
-    const x = edge + ((cell % columns) + 0.5) * pitch + random() * 4;
-    const z = edge + (Math.floor(cell / columns) + 0.5) * pitch + random() * 4;
-    if (!allowed(x, z)) continue;
+  const centers = new SpawnGrid<{x:number; z:number}>();
+  const place = (x:number, z:number, site?: SpawnSite) => {
+    if (members.length >= count * CAMP_SIZE || x < edge || z < edge || x > size-edge || z > size-edge || !allowed(x,z)) return;
+    for (const other of centers.near(x,z,124)) if (Math.hypot(other.x-x,other.z-z) < 124) return;
     const heading = random() * Math.PI * 2;
     const camp = members.length / CAMP_SIZE;
+    const group: CampMember[] = [];
     for (let n = 0; n < CAMP_SIZE; n++) {
       const angle = heading + n * 2.399963;
       const radius = Math.sqrt(n / (CAMP_SIZE - 1)) * CAMP_RADIUS;
-      members.push({ camp, x: x + Math.cos(angle) * radius, z: z + Math.sin(angle) * radius, heading: angle });
+      const mx = x + Math.cos(angle)*radius, mz = z + Math.sin(angle)*radius;
+      if (!allowed(mx,mz)) return;
+      group.push({ camp, x:mx, z:mz, heading:angle, site });
     }
+    centers.add(x,z,{x,z});
+    members.push(...group);
+  };
+  for (const site of sites) place(site.x,site.z,site);
+  for (const cell of strata) {
+    if (members.length >= count * CAMP_SIZE) break;
+    place(edge + ((cell % columns)+.5)*pitch + random()*4, edge + (Math.floor(cell/columns)+.5)*pitch + random()*4);
   }
   return members;
 }

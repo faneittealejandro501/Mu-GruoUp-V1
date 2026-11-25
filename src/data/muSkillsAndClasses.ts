@@ -588,6 +588,10 @@ export const MU_SKILLS: Record<HeroClass, SkillDef[]> = Object.fromEntries(
 ) as Record<HeroClass, SkillDef[]>;
 
 export const DEFAULT_BUTTON_LAYOUTS: Record<HudButtonId, ButtonLayoutItem> = {
+  status: { id:'status', label:'Estado del héroe', xPct:15, yPct:6, scale:1 },
+  actions: { id:'actions', label:'Eventos y nube', xPct:13, yPct:16, scale:1 },
+  vitals: { id:'vitals', label:'Vida y maná', xPct:50, yPct:93, scale:1 },
+  talk: { id:'talk', label:'Hablar / viajar', xPct:50, yPct:27, scale:1 },
   helper: { id: 'helper', label: 'Hellpe', xPct: 25, yPct: 65, scale: 1 },
   joystick: { id: 'joystick', label: 'Joystick', xPct: 14, yPct: 76, scale: 1.0 },
   attack: { id: 'attack', label: 'Atacar', xPct: 89, yPct: 78, scale: 1.08 },

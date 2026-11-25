@@ -167,7 +167,7 @@ function getEnhanceVisualSpec(enhanceLevel: number): {
   return { emissive: 0.02, specular: 0.15, sparkleRate: 0, color: Color3.FromHexString('#cbd5e1') };
 }
 
-function applyEnhanceGlow(mesh: AbstractMesh, enhanceLevel: number, color?: number): void {
+export function applyEnhanceGlow(mesh: AbstractMesh, enhanceLevel: number, color?: number): void {
   if ((enhanceLevel < 3 && color === undefined) || !mesh.material) return;
   const spec = getEnhanceVisualSpec(enhanceLevel);
   const applyToMat = (mat: Material): Material => {

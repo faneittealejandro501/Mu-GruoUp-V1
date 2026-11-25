@@ -12,7 +12,8 @@
     { "minLevel": 3, "maxLevel": 5, "emissive": 0.16, "specular": 0.42, "sparkleRate": 3, "color": "#38bdf8", "label": "Templado Azul" },
     { "minLevel": 6, "maxLevel": 8, "emissive": 0.34, "specular": 0.68, "sparkleRate": 7, "color": "#f59e0b", "label": "Resplandor Ámbar" },
     { "minLevel": 9, "maxLevel": 11, "emissive": 0.56, "specular": 0.88, "sparkleRate": 14, "color": "#fbbf24", "label": "Brillo Dorado +9" },
-    { "minLevel": 12, "maxLevel": 15, "emissive": 0.85, "specular": 1.0, "sparkleRate": 24, "color": "#a855f7", "label": "Aura Mítica +15" }
+    { "minLevel": 12, "maxLevel": 13, "emissive": 0.85, "specular": 1.0, "sparkleRate": 24, "color": "#a855f7", "label": "Aura Mítica" },
+    { "minLevel": 14, "maxLevel": 15, "emissive": 0.95, "specular": 1.0, "sparkleRate": 30, "color": "#e8c4ff", "label": "Aura Astral" }
   ],
   "excellentOptions": [
     { "id": "exc_dmg", "label": "+10% Daño Excelente", "critPct": 10 },

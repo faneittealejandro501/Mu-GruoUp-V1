@@ -1,5 +1,5 @@
 import { createHash, randomUUID, randomBytes, createCipheriv, createDecipheriv, timingSafeEqual } from 'node:crypto';
-import { mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync, unlinkSync } from 'node:fs';
+import { accessSync, constants, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync, unlinkSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { Express } from 'express';
 
@@ -19,6 +19,16 @@ export function mountPrivateBackup(app: Express, directory?: string, browserOrig
   mkdirSync(root, { recursive: true, mode: 0o700 });
   const allowedOrigins = new Set(browserOrigins.split(',').map(origin => origin.trim()).filter(Boolean));
   const recoveryKey = /^[a-f0-9]{64}$/i.test(recoverySecret) ? Buffer.from(recoverySecret,'hex') : null;
+  app.get('/api/account-service', (req,res) => {
+    const origin = req.get('origin');
+    if (origin && !allowedOrigins.has(origin)) { res.sendStatus(403); return; }
+    if (origin) res.set('Access-Control-Allow-Origin',origin).vary('Origin');
+    res.set('Cache-Control','no-store');
+    try {
+      accessSync(root,constants.R_OK | constants.W_OK);
+      res.status(recoveryKey ? 200 : 503).json({service:'mugroup-accounts', recovery:!!recoveryKey});
+    } catch { res.sendStatus(503); }
+  });
   const seal = (name: string, answers: unknown) => {
     const iv = randomBytes(12);
     const encoder = createCipheriv('aes-256-gcm',recoveryKey!,iv);

@@ -455,7 +455,7 @@ async function touchCharacterWithItems(charId: string): Promise<MuCharacter | nu
     ...cur,
     equipment: items.filter((i) => i.isEquipped),
     inventory: items.filter((i) => !i.isEquipped),
-    updatedAt: Date.now(),
+    updatedAt: Math.max(Date.now(),cur.updatedAt+1),
     isSynced: false,
   });
   await db.characters.put(updated);
@@ -515,7 +515,11 @@ export async function wearEquipment(
   const items = await db.items.where('charId').equals(charId).toArray();
   const target = items.find((i) => (itemId ? i.id === itemId : i.isEquipped && i.slot === slot));
   if (!target) return;
-  await db.items.update(target.id, { durability: clamped });
+  if (target.durability === clamped) return;
+  await db.transaction('rw',db.items,db.characters,async()=>{
+    await db.items.update(target.id, { durability: clamped });
+    await touchCharacterWithItems(charId);
+  });
 }
 
 export async function repairEquipment(charId: string): Promise<MuCharacter> {
@@ -680,7 +684,10 @@ export async function addCatalogItem(character: MuCharacter, shopItem: ShopItemD
     acquiredAt: new Date().toISOString(),
   };
 
-  await db.items.put(newItem);
+  await db.transaction('rw',db.items,db.characters,async()=>{
+    await db.items.put(newItem);
+    await touchCharacterWithItems(character.id);
+  });
 }
 
 export async function buyShopItem(

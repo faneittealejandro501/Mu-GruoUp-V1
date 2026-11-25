@@ -331,7 +331,8 @@ class CloudSyncManager {
       const endpoint = await this.backupEndpoint();
       if (endpoint.href !== binding.endpoint) return false;
       const copy = await syncEncryptedBackup(endpoint,binding.code);
-      if (copy.account.id !== account.id || copy.account.updatedAt <= account.updatedAt) return false;
+      // Inventory and character revisions advance independently of account credentials.
+      if (copy.account.id !== account.id) return false;
       await this.applyBackup(copy,endpoint,binding.code);
       return true;
     } catch { return false; } // The local copy remains usable while the server is unavailable.

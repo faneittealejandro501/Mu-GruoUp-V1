@@ -47,6 +47,7 @@ export type TransportMode = 'wifi' | 'bluetooth';
 export type EventType = 'blood_castle' | 'chaos_castle' | 'kundun_boss' | 'free_trade';
 
 export type HudButtonId =
+  | 'status' | 'actions' | 'vitals' | 'talk'
   | 'helper'
   | 'joystick'
   | 'attack'

@@ -1862,7 +1862,7 @@ export default function App() {
         </>
       )}
 
-      {screenStage === 'paused' && activeDrawer === 'none' && (
+      {screenStage === 'paused' && !editMode && activeDrawer === 'none' && (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/75 p-4">
           <div className="w-full max-w-sm rounded-2xl bg-[#111622] border-2 border-amber-700/70 p-6 space-y-3 shadow-2xl">
             <h2 className="font-display text-xl font-bold text-amber-300 text-center">

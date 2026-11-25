@@ -65,7 +65,16 @@ La Web y la PWA comprueban actualizaciones de la ubicación instalada al recuper
 
 GitHub Pages publica la web, el APK y `server-connection.json`. Ambos clientes leen ese archivo para encontrar el mismo servidor de cuentas y ADMIN. El APK también guarda la URL de la compilación como respaldo si la consulta no responde.
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:6fa46c870e3a0432a8e8c3cd44b33987122cebc9c0e75233c12dd4dfacfd3a0d -->
+
 1. En un servidor con Node 24 y Bun 1.4.2, obtén esta revisión y ejecuta `bun install --frozen-lockfile`, `bun run build` y `bun run start`. Pon un proxy HTTPS delante del puerto 3000 (o usa el puerto de tu hospedaje con `PORT`).
+
+   También puedes crear el servicio con el Blueprint de Render incluido en `render.yaml` (instancia con disco de pago). Configura los dos secretos indicados en el paso 2 y conserva el disco al actualizar. Si ya tienes cuentas en otro servidor, conserva sus archivos y su clave de recuperación al migrar. El servicio queda listo cuando `/api/account-service` responde con estado 200.
+
+
+<!-- /coderabbit-ai-generated:v1 -->
 2. Configura `MU_BACKUP_DIR` y `MU_WORLD_FILE` en un volumen persistente. Habilita `MU_BACKUP_ORIGINS` y `MU_WORLD_ORIGINS` con `https://faneittealejandro501.github.io,https://apk.mugroup.invalid`. Genera `MU_RECOVERY_KEY` con `openssl rand -hex 32` y guarda una copia privada junto a los respaldos. Para ADMIN, configura una contraseña nueva con `MU_ADMIN_PASSWORD`.
 3. En GitHub → Settings → Secrets and variables → Actions → Variables, define `VITE_BACKUP_URL` con el origen HTTPS del servidor, sin ruta final. Ejecuta **Deploy GitHub Pages**. Puedes verificar la conexión consultando `/Mu-GruoUp-V1/server-connection.json` en Pages y `/api/ota/manifest` en el servidor.
 
