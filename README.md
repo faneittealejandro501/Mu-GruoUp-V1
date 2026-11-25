@@ -67,7 +67,13 @@ ADMIN se edita únicamente en el repositorio. Publica una nueva compilación par
 
 Cada región incluye 4.000 campamentos de diez monstruos y los grupos adicionales configurados en ADMIN. Las posiciones se generan por mapa y solo se cargan modelos cerca del jugador. En `world-rules.json`, `stripManmadeStructures` permite ocultar construcciones si se prefiere.
 
-Esta versión usa [Mobile](https://angelicamarin313555.github.io/Mobile/) para instalarse y actualizarse. Una copia instalada desde otro sitio seguirá vinculada a ese sitio. Exporta la partida desde la copia anterior e impórtala en Mobile antes de retirar la anterior.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:c4607456c9863d5858b43456bef0531d68dd533569528d7c7ead524e1b583273 -->
+
+La dirección prevista de la nueva instalación es [Mu-GruoUp-V1](https://faneittealejandro501.github.io/Mu-GruoUp-V1/). Antes de retirar la PWA anterior, abre **Web / APKweb → Exportar Respaldo (.json)** allí. En la nueva instalación, usa **Importar Respaldo (.json)** y comprueba tus personajes e inventario.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 <!-- /coderabbit-ai-generated:v1 -->
 
