@@ -1,3 +1,4 @@
+import { androidClient } from '../services/androidRooms';
 import { offlineInstallReady } from '../services/offlineInstall';
 import { PrivateBackupPanel } from './PrivateBackupPanel';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -28,7 +29,7 @@ import {
   type GithubOtaStatus,
 } from '../services/githubOtaService';
 import type { SyncStatusInfo } from '../types/game';
-import { PWAInstallButton } from './PWAInstallButton';
+import { AndroidDownloadLink, PWAInstallButton } from './PWAInstallButton';
 
 interface ApkSyncDrawerProps {
   open: boolean;
@@ -112,6 +113,10 @@ export const ApkSyncDrawer: React.FC<ApkSyncDrawerProps> = ({
     setPreloadingCache(true);
     setNotice(null);
     try {
+      if (androidClient) {
+        setNotice('El APK ya incluye todo el cliente para jugar sin internet.');
+        return;
+      }
       if (!('serviceWorker' in navigator)) throw new Error('Este navegador no admite la instalación sin conexión.');
       const ready = await offlineInstallReady();
       if (!ready && navigator.onLine) await applyWebOtaUpdate();
@@ -144,6 +149,10 @@ export const ApkSyncDrawer: React.FC<ApkSyncDrawerProps> = ({
 
   const handleExportJson = async () => {
     const blob = await exportDatabaseFile();
+    if (androidClient) {
+      androidClient.exportBackup(await blob.text());
+      return;
+    }
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -223,13 +232,14 @@ export const ApkSyncDrawer: React.FC<ApkSyncDrawerProps> = ({
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <button
-                  onClick={handleCheckAndApplyUpdate}
+                  onClick={androidClient ? () => androidClient?.openDownload() : handleCheckAndApplyUpdate}
                   disabled={checkingOta}
                   className="min-h-[38px] px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${checkingOta ? 'animate-spin' : ''}`} />
-                  {otaStatus?.updateAvailable ? 'Aplicar Actualización' : 'Buscar Actualizaciones'}
+                  {androidClient ? 'Buscar APK nuevo' : otaStatus?.updateAvailable ? 'Aplicar Actualización' : 'Buscar Actualizaciones'}
                 </button>
+                <AndroidDownloadLink />
                 <PWAInstallButton />
               </div>
             </div>

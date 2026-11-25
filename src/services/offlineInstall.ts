@@ -1,5 +1,8 @@
+import { androidClient } from './androidRooms';
+
 // Check the installed worker's own inventory, including revisioned terrain and game data.
 export async function offlineInstallReady(expectedVersion?: string): Promise<boolean> {
+  if (androidClient) return !expectedVersion;
   if (!('serviceWorker' in navigator) || !('caches' in window)) return false;
   const registration = await navigator.serviceWorker.getRegistration();
   if (!registration?.active) return false;

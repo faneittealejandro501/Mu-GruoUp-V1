@@ -201,7 +201,6 @@ export default function App() {
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
   const [roomState, setRoomState] = useState<RoomState | null>(null);
-  const [btDeviceName, setBtDeviceName] = useState<string | null>(null);
   const [banners, setBanners] = useState<FloatingBanner[]>([]);
   const [activeEffects, setActiveEffects] = useState<ActiveEffect[]>([]);
   const [targetMonster, setTargetMonster] = useState<TargetMonsterInfo | null>(null);
@@ -799,9 +798,8 @@ export default function App() {
         setSyncMessage(message);
         pushBanner('Invitación finalizada · Ítems y duelos asegurados en IndexedDB', '#fbbf24');
       },
-      onError: (message) => {
-        setSyncMessage(message);
-      },
+      onError: setSyncMessage,
+      onStatus: setSyncMessage,
     });
     syncRef.current = manager;
     return () => {
@@ -1704,7 +1702,7 @@ export default function App() {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-[#0c1018]">
-      {engineError && <div role="alert" className="fixed top-2 left-2 right-2 z-50 rounded bg-red-950/95 text-red-100 p-3 text-sm">{engineError}</div>}
+      {engineError && <div role="alert" className="pointer-events-none fixed bottom-2 left-2 right-2 z-50 rounded bg-red-950/95 text-red-100 p-3 text-sm">{engineError}</div>}
       <div ref={canvasMountRef} className={`absolute inset-0 w-full h-full ${screenStage === 'character_select' ? 'realm-canvas' : ''}`} />
 
       {worldLoading && <div role="status" className="realm-load" style={{backgroundImage: `url(./mugroup/portadas/${loadingScene.art}.webp)`}}>
@@ -1968,7 +1966,6 @@ export default function App() {
             localPeerId={syncRef.current?.peerId || 'peer-local'}
             wsConnected={wsConnected}
             roomState={roomState}
-            bluetoothDeviceName={btDeviceName}
             ledger={ledger}
             eventHistory={eventHistory}
             duelRecords={duelRecords}
@@ -1976,20 +1973,13 @@ export default function App() {
             lastDuelResult={lastDuelResult}
             statusMessage={syncMessage}
             onClose={() => setActiveDrawer('none')}
-            onPairBluetooth={async () => {
-              if (!syncRef.current) return;
-              const res = await syncRef.current.pairBluetoothHardware();
-              if (res.deviceName) setBtDeviceName(res.deviceName);
-              setSyncMessage(res.message);
-            }}
             onCreateRoom={async (evType, trans) => {
               if (!syncRef.current) return;
               await syncRef.current.createRoom(buildPeerSnapshot(), evType, trans);
-              setSyncMessage('Sala creada. Comparte el código o enlace con los invitados.');
             }}
-            onJoinRoom={async (code, trans) => {
+            onJoinRoom={async (code, trans, address) => {
               if (!syncRef.current) return;
-              await syncRef.current.joinRoom(code, buildPeerSnapshot(), trans);
+              await syncRef.current.joinRoom(code, buildPeerSnapshot(), trans, address);
             }}
             onStartEvent={(evType) => {
               syncRef.current?.startEvent(evType);

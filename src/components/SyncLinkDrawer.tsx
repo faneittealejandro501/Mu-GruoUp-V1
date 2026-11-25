@@ -1,3 +1,4 @@
+import { androidClient } from '../services/androidRooms';
 import React, { useState } from 'react';
 import {
   Bluetooth,
@@ -32,7 +33,6 @@ interface SyncLinkDrawerProps {
   localPeerId: string;
   wsConnected: boolean;
   roomState: RoomState | null;
-  bluetoothDeviceName: string | null;
   ledger: SharedLedgerEntry[];
   eventHistory: EventSessionRecord[];
   duelRecords: AsyncDuelRecord[];
@@ -40,9 +40,8 @@ interface SyncLinkDrawerProps {
   lastDuelResult: AsyncDuelRecord | null;
   statusMessage: string | null;
   onClose: () => void;
-  onPairBluetooth: () => Promise<void>;
   onCreateRoom: (eventType: EventType, transport: TransportMode) => Promise<void>;
-  onJoinRoom: (code: string, transport: TransportMode) => Promise<void>;
+  onJoinRoom: (code: string, transport: TransportMode, address: string) => Promise<void>;
   onStartEvent: (eventType: EventType) => void;
   onSendItemToPeer: (targetPeerId: string, item: MuItem) => void;
   onEndRoom: () => void;
@@ -67,7 +66,6 @@ export const SyncLinkDrawer: React.FC<SyncLinkDrawerProps> = ({
   localPeerId,
   wsConnected,
   roomState,
-  bluetoothDeviceName,
   ledger,
   eventHistory,
   duelRecords,
@@ -75,7 +73,6 @@ export const SyncLinkDrawer: React.FC<SyncLinkDrawerProps> = ({
   lastDuelResult,
   statusMessage,
   onClose,
-  onPairBluetooth,
   onCreateRoom,
   onJoinRoom,
   onStartEvent,
@@ -91,6 +88,7 @@ export const SyncLinkDrawer: React.FC<SyncLinkDrawerProps> = ({
   const [transport, setTransport] = useState<TransportMode>('wifi');
   const [eventType, setEventType] = useState<EventType>('blood_castle');
   const [joinCode, setJoinCode] = useState('');
+  const [address, setAddress] = useState('');
   const [selectedTradeItemId, setSelectedTradeItemId] = useState<string>('');
   const [myDuelToken, setMyDuelToken] = useState<string>('');
   const [opponentToken, setOpponentToken] = useState<string>('');
@@ -128,12 +126,11 @@ export const SyncLinkDrawer: React.FC<SyncLinkDrawerProps> = ({
             )}
             <div>
               <h2 className="font-display text-base font-bold text-sky-300">
-                Multijugador Local Wi-Fi / Bluetooth &amp; Duelos Asíncronos
+                Salas locales y duelos asíncronos
               </h2>
               <p className="text-[11px] font-mono-tabular text-slate-400">
                 Héroe: {character.name} ({character.classType} Nv.{character.level}) · WebSocket:{' '}
                 {wsConnected ? 'Conectado' : 'En espera / Offline'}
-                {bluetoothDeviceName ? ` · BT: ${bluetoothDeviceName}` : ''}
               </p>
             </div>
           </div>
@@ -200,7 +197,7 @@ export const SyncLinkDrawer: React.FC<SyncLinkDrawerProps> = ({
                 }`}
               >
                 <Wifi className="w-3.5 h-3.5" />
-                Wi-Fi Local (WebSocket)
+                Wi-Fi local
               </button>
               <button
                 type="button"
@@ -212,17 +209,18 @@ export const SyncLinkDrawer: React.FC<SyncLinkDrawerProps> = ({
                 }`}
               >
                 <Bluetooth className="w-3.5 h-3.5" />
-                Bluetooth GATT
+                {androidClient ? 'Bluetooth directo' : 'Bluetooth (APK Android)'}
               </button>
             </div>
-            <button
-              type="button"
-              onClick={() => void onPairBluetooth()}
-              className="min-h-[36px] px-3 rounded-lg bg-[#1b2438] hover:bg-slate-700 border border-indigo-500/40 text-indigo-200 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
-            >
-              <Bluetooth className="w-3.5 h-3.5" />
-              Emparejar Dispositivo BT
-            </button>
+            <p className="w-full text-xs text-slate-300">
+              {androidClient
+                ? transport === 'wifi'
+                  ? 'Conecta ambos dispositivos al mismo Wi-Fi o al punto de acceso del anfitrión. No hace falta internet.'
+                  : 'Vincula los dos dispositivos en Ajustes de Android → Bluetooth. El invitado elegirá al anfitrión al entrar.'
+                : transport === 'wifi'
+                  ? 'Abre el juego desde el mismo servidor Node en los dos dispositivos.'
+                  : 'Instala el APK Android en los dos dispositivos para jugar por Bluetooth.'}
+            </p>
           </div>
 
           {tab === 'room' && (
@@ -250,6 +248,7 @@ export const SyncLinkDrawer: React.FC<SyncLinkDrawerProps> = ({
                     </label>
                     <button
                       type="button"
+                      disabled={!androidClient && transport === 'bluetooth'}
                       onClick={() => void onCreateRoom(eventType, transport)}
                       className="w-full min-h-[42px] rounded-lg bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-xs cursor-pointer"
                     >
@@ -272,10 +271,19 @@ export const SyncLinkDrawer: React.FC<SyncLinkDrawerProps> = ({
                         className="mt-1 w-full min-h-[40px] rounded-lg bg-[#090d16] border border-slate-700 px-3 text-xs font-mono-tabular text-slate-100"
                       />
                     </label>
+                    {androidClient && transport === 'wifi' && (
+                      <label className="block text-xs text-slate-300">
+                        Dirección Wi-Fi del anfitrión
+                        <input type="text" inputMode="decimal" autoComplete="off"
+                          value={address} onChange={e => setAddress(e.target.value)}
+                          placeholder="192.168.1.20"
+                          className="mt-1 w-full min-h-[40px] rounded-lg bg-[#090d16] border border-slate-700 px-3 text-xs text-slate-100" />
+                      </label>
+                    )}
                     <button
                       type="button"
-                      disabled={!joinCode.trim()}
-                      onClick={() => void onJoinRoom(joinCode, transport)}
+                      disabled={!joinCode.trim() || (transport === 'wifi' ? !!androidClient && !address.trim() : !androidClient)}
+                      onClick={() => void onJoinRoom(joinCode, transport, address)}
                       className="w-full min-h-[42px] rounded-lg bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white font-bold text-xs cursor-pointer"
                     >
                       Entrar a Sala

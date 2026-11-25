@@ -51,7 +51,30 @@ La Web y la PWA comprueban actualizaciones de la ubicación instalada al recuper
 
 Pages hospeda el juego estático. Para sincronizar partidas desde Pages, ejecuta el servidor Node en un servicio HTTPS, con `MU_BACKUP_DIR` apuntando a un volumen persistente y `MU_BACKUP_ORIGINS` con los orígenes autorizados, separados por comas. Pon la URL en **Web / APKweb**, crea una copia y guarda el código de recuperación. El cliente sincroniza solo la cuenta activa y cifra la cuenta, los personajes y su equipo antes de transmitirlos; GitHub recibe código y compilaciones. Para recuperar desde otro dispositivo, abre el panel, indica el mismo servidor y restaura con el código; luego puedes restablecer la contraseña mediante tus preguntas de recuperación.
 
-En una LAN, abre el juego desde el mismo servidor y puerto en todos los dispositivos y comparte el código de sala. Bluetooth del navegador puede seleccionar periféricos GATT compatibles; las salas en tiempo real usan WebSocket por Wi-Fi. El modo de un jugador y el Oráculo de consejos funcionan en la PWA sin conexión una vez instalada.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:c0302552f1f60e64036f9965af72f069825d9459cb9ddede58abce83113a1554 -->
+
+## APK Android: cliente completo y multijugador local
+
+**Descargar APK Android** aparece en la página de inicio y en **Web / APKweb** cuando hay un APK publicado junto al sitio. En Actions, el artefacto **mugroup-android** contiene el instalador. El APK incluye los modelos, mapas, texturas, audio y datos base; puedes crear una cuenta y jugar en solitario desde el primer inicio sin internet. Requiere Android 8 o posterior y Android System WebView actualizado. El APK guarda su propia partida: exporta tu respaldo JSON de la PWA e impórtalo desde **Web / APKweb** en Android.
+
+- **Wi-Fi local:** abre el APK en los dos dispositivos y conéctalos a la misma red o al punto de acceso del anfitrión. El anfitrión crea la sala y comparte la dirección IP que muestra el juego y el código. El invitado introduce ambos en **Salas locales → Wi-Fi local**. Usa IPv4 y el puerto TCP 32183; una red que aísla a sus clientes puede impedir la conexión.
+- **Bluetooth directo:** empareja primero los dispositivos en **Ajustes de Android → Bluetooth**. En el APK, permite el acceso a dispositivos cercanos. El anfitrión crea una sala Bluetooth, y el invitado usa el código y selecciona el equipo anfitrión de la lista de dispositivos emparejados. No hace falta activar el Wi-Fi ni tener acceso a internet.
+- **Web y PWA:** el modo de un jugador y el Oráculo de consejos funcionan sin conexión después de instalar la PWA y guardar el cliente. Para las salas en red local, abre el juego desde el mismo servidor Node y puerto en todos los dispositivos. Las salas del APK y las salas WebSocket no se mezclan.
+
+### Compilar y publicar el APK
+
+Instala JDK 21, Android SDK Platform 35, Build Tools 35.0.0 y el comando `zip`. Configura `ANDROID_HOME` y ejecuta:
+
+```sh
+bun run build
+bun run build:android
+```
+
+El resultado es `build/android/MuGro-up-Android.apk`. Sin credenciales se genera un APK de prueba con identificador independiente; dos equipos deben instalar la misma compilación para la prueba. Para publicar desde la rama principal, guarda la firma permanente en los secretos de Actions `MU_ANDROID_KEYSTORE_B64`, `MU_ANDROID_KEY_ALIAS`, `MU_ANDROID_STORE_PASSWORD` y `MU_ANDROID_KEY_PASSWORD`. Con la firma configurada, el flujo publica el APK junto al sitio y habilita la descarga. Incrementa la versión de `public/ota-manifest.json` para cada actualización y conserva la clave: Android la usa para instalar una actualización sobre la aplicación existente.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ## Contenido y ajustes
 
