@@ -8,7 +8,7 @@ import {
   AnimationGroup,
   AssetContainer,
   Color3,
-  Mesh, Material,
+  Mesh, PBRMaterial, Texture,
   Node,
   ParticleSystem,
   PointLight,
@@ -90,6 +90,7 @@ export interface LoadedTileState {
   details: Map<number, TransformNode>;
   waterMeshes: Mesh[];
   loadedAt: number;
+  volcanicSurfaces: ShaderMaterial[];
 }
 
 // The source uses abbreviations (Tr/Ro/Gr) as well as full names. Keep
@@ -390,18 +391,7 @@ export class FlyffWorldStreamer {
   public detailRadius = 100;
   public stripManmadeStructures = true;
 
-  private crater = false;
-  private volcanic: ShaderMaterial | null = null;
-  private originalSurfaces = new WeakMap<AbstractMesh,Material>();
-  public setCrater(active: boolean) {
-    this.crater = active;
-    for (const tile of this.tiles.values()) for (const mesh of tile.terrainContainer.meshes) this.styleGround(mesh);
-  }
-  private styleGround(mesh: AbstractMesh) {
-    if (!mesh.material || mesh.name === '__root__') return;
-    if (!this.originalSurfaces.has(mesh)) this.originalSurfaces.set(mesh,mesh.material);
-    mesh.material = this.crater ? (this.volcanic ??= craterMaterial(this.scene)) : this.originalSurfaces.get(mesh)!;
-  }
+  private volcanicTextures?: [Texture,Texture];
   private collisionCache = new Map<string, CollisionGeometryData>();
   private streamingLock: Promise<void> | null = null;
   private getWorldClock: () => number;
@@ -582,6 +572,12 @@ export class FlyffWorldStreamer {
       return;
     }
 
+    const volcano = this.manifest?.volcano;
+    const volcanicSurfaces: ShaderMaterial[] = [];
+    const overlaps = volcano && Math.hypot(
+      Math.max(tileDef.x - volcano.x, 0, volcano.x - tileDef.x - tileDef.sizeMeters),
+      Math.max(tileDef.z - volcano.z, 0, volcano.z - tileDef.z - tileDef.sizeMeters),
+    ) < volcano.radius;
     const root = new TransformNode(`tile_${tileDef.id}`, this.scene);
     terrainContainer.addAllToScene();
 
@@ -598,7 +594,12 @@ export class FlyffWorldStreamer {
         m.position.set(tileDef.x, 0, tileDef.z);
       } else if (m.material) {
         m.material.backFaceCulling = false;
-        this.styleGround(m);
+        if (volcano && overlaps && m.material instanceof PBRMaterial && m.material.albedoTexture) {
+          this.volcanicTextures ??= [new Texture('./mugroup/ui/basalt.webp',this.scene),new Texture('./mugroup/ui/magma.webp',this.scene)];
+          const material = craterMaterial(this.scene,m.material.albedoTexture,volcano,...this.volcanicTextures);
+          m.material = material;
+          volcanicSurfaces.push(material);
+        }
       }
       m.isPickable = false;
     }
@@ -622,6 +623,7 @@ export class FlyffWorldStreamer {
       details: new Map(),
       waterMeshes,
       loadedAt: clock,
+      volcanicSurfaces,
     });
   }
 
@@ -677,6 +679,7 @@ export class FlyffWorldStreamer {
   }
 
   private evictTile(tile: LoadedTileState): void {
+    for (const material of tile.volcanicSurfaces) material.dispose();
     for (const wm of tile.waterMeshes) {
       try {
         wm.dispose(false, false);
@@ -762,7 +765,7 @@ export class FlyffWorldStreamer {
     } catch {
       // ignore
     }
-    this.volcanic?.dispose(false,true); this.volcanic=null;
+    this.volcanicTextures?.forEach(texture=>texture.dispose());
     this.waterMaterial = null;
   }
 }

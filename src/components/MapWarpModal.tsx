@@ -28,7 +28,7 @@ export const MapWarpModal: React.FC<MapWarpModalProps> = ({
             <Compass className="w-5 h-5 text-amber-400" />
             <div>
               <h2 className="font-display text-sm sm:text-base font-bold text-amber-300">
-                Teletransporte · 4 Mundos de Madrigal (9,44 km²)
+                Teletransporte · 4 capitales de Madrigal (9,44 km²)
               </h2>
               <p className="text-[11px] text-slate-400 font-mono-tabular">
                 Nivel actual: {character.level}/99 (Resets: {character.resets}) · Zen disponible: {character.zen.toLocaleString()}
@@ -53,11 +53,11 @@ export const MapWarpModal: React.FC<MapWarpModalProps> = ({
             return (
               <button
                 key={m.id}
-                onClick={() => !isCurrent && onWarpToMap(m.id)}
-                disabled={isCurrent}
+                onClick={() => onWarpToMap(m.id)}
+                disabled={!canAfford}
                 className={`p-3.5 rounded-xl border text-left transition-colors flex flex-col justify-between gap-2.5 ${
                   isCurrent
-                    ? 'bg-amber-950/40 border-amber-500 text-amber-200 cursor-default'
+                    ? 'bg-amber-950/40 border-amber-500 text-amber-200 cursor-pointer'
                     : canAfford
                       ? 'bg-[#121826] border-slate-700 hover:border-amber-500/80 text-slate-100 cursor-pointer'
                       : 'bg-[#10141f] border-rose-900/50 text-slate-400 cursor-pointer'
@@ -104,7 +104,7 @@ export const MapWarpModal: React.FC<MapWarpModalProps> = ({
                     {m.warpZen === 0 ? 'Gratis' : `${m.warpZen.toLocaleString()} Zen`}
                   </span>
                   <span className="font-bold text-emerald-300">
-                    {isCurrent ? 'Mapa Actual' : 'Viajar →'}
+                    {isCurrent ? 'Volver a la capital' : 'Viajar →'}
                   </span>
                 </div>
               </button>

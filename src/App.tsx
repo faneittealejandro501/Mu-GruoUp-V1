@@ -24,7 +24,6 @@ import {
   getChatHistory,
   getEventSessions,
   getItemsForCharacter,
-  getLocalRecoveryQuestions,
   getSharedLedger,
   initDexie,
   getWorldAdminProfile,
@@ -40,7 +39,6 @@ import {
   performHeroReset,
   recordAsyncDuel,
   recordSharedLedger,
-  recoverAccountLocal,
   registerAccount,
   removeItemFromCharacter,
   saveButtonLayouts,
@@ -229,7 +227,7 @@ export default function App() {
     const pose = screenStageRef.current === 'playing' && engineRef.current?.getHeroPose();
     await db.transaction('rw', db.tables, async () => {
       if (c && pose) await db.characters.update(c.id, {
-        lastX: pose.x, lastZ: pose.z, lastRotY: pose.rotY, updatedAt: Date.now(), isSynced: false,
+        currentMapId:pose.mapId,lastX: pose.x, lastZ: pose.z, lastRotY: pose.rotY, updatedAt: Date.now(), isSynced: false,
       });
     });
     return !worldLoadRef.current;
@@ -576,7 +574,7 @@ export default function App() {
         typeof c.lastZ !== 'number' ||
         Math.hypot(pose.x - c.lastX, pose.z - c.lastZ) >= 0.75;
       if (!movedEnough) return;
-      const next = { ...c, lastX: Number(pose.x.toFixed(2)), lastZ: Number(pose.z.toFixed(2)), lastRotY: Number(pose.rotY.toFixed(3)) };
+      const next = { ...c, currentMapId:pose.mapId,lastX: Number(pose.x.toFixed(2)), lastZ: Number(pose.z.toFixed(2)), lastRotY: Number(pose.rotY.toFixed(3)) };
       charRef.current = next;
       void updateCharacter(next);
     };
@@ -1233,6 +1231,7 @@ export default function App() {
       }
     } else {
       let res = await loginAccount(username, password);
+      if (res.ok && await cloudSyncManager.refreshLinkedLogin(res.account)) res = await loginAccount(username,password);
       if (!res.ok && navigator.onLine) {
         try {
           await cloudSyncManager.restoreLogin(username,password);
@@ -1305,36 +1304,22 @@ export default function App() {
     | { found: true; secretQ1: string; secretQ2: string; source: 'local' | 'cloud' }
     | { found: false; error?: string }
   > => {
-    const local = await getLocalRecoveryQuestions(username);
-    if (local.found) {
-      return { found: true, secretQ1: local.secretQ1, secretQ2: local.secretQ2, source: 'local' };
+    try {
+      const [secretQ1,secretQ2] = await cloudSyncManager.recoveryQuestions(username);
+      return {found:true,secretQ1,secretQ2,source:'cloud'};
+    } catch (e) {
+      return {found:false,error:e instanceof Error ? e.message : 'La recuperación no está disponible.'};
     }
-    return { found: false, error: 'Si tienes una copia privada, restáurala desde Web / APKweb antes de recuperar la contraseña.' };
   };
 
-  const handleRecoverAccount = async (input: {
-    username: string;
-    answer1: string;
-    answer2: string;
-    newPassword: string;
-  }) => {
-    const local = await getLocalRecoveryQuestions(input.username);
-    if (local.found) {
-      const res = await recoverAccountLocal(
-        input.username,
-        input.answer1,
-        input.answer2,
-        input.newPassword,
-      );
-      if (!res.ok) return { ok: false, error: res.error };
+  const handleRecoverAccount = async (input: {username:string; slot:1|2; answer:string; newPassword:string}) => {
+    try {
+      await cloudSyncManager.recoverLogin(input.username,input.slot,input.answer,input.newPassword);
       setAccounts(await listAccounts());
-      return {
-        ok: true,
-        message: 'Contraseña restablecida localmente en IndexedDB. Ya puedes iniciar sesión.',
-      };
+      return {ok:true,message:'Cuenta recuperada. Entra con tu nueva contraseña.'};
+    } catch (e) {
+      return {ok:false,error:e instanceof Error ? e.message : 'No se pudo recuperar la cuenta.'};
     }
-
-    return { ok: false as const, error: 'Primero restaura tu copia privada desde Web / APKweb.' };
   };
 
   const handleCreateCharacter = async (name: string, classType: HeroClass, sex: 'male' | 'female', appearanceId?: string) => {
@@ -1859,6 +1844,7 @@ export default function App() {
             onHealPotion={handleHealPotion}
             onPickupLoot={() => engineRef.current?.pickupNearestLoot(true, lootFiltersRef.current)}
             onTalkNpc={(npc) => {
+              if (npc.warpTarget) { void handleWarpToMap(npc.warpTarget); return; }
               setActiveNpc(npc);
               setNpcStatusMessage(null);
               setActiveDrawer('npc');
@@ -1929,7 +1915,7 @@ export default function App() {
           <MapWarpModal
             open={activeDrawer === 'mapWarp'}
             character={character}
-            currentMapId={character.currentMapId}
+            currentMapId={minimapData?.mapId ?? character.currentMapId}
             onClose={() => setActiveDrawer('none')}
             onWarpToMap={handleWarpToMap}
           />

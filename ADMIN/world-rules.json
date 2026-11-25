@@ -2,7 +2,7 @@
   "brandName": "MuGro-up'",
   "version": "2.0.0",
   "cityRadiusMeters": 500,
-  "detailStreamRadiusMeters": 100,
+  "detailStreamRadiusMeters": 180,
   "wingRunSpeedMultiplier": 1.0,
   "baseRunSpeed": 14.0,
   "stripManmadeStructures": false,

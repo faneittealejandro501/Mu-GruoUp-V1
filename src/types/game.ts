@@ -208,6 +208,7 @@ export interface NpcDef {
   z: number;
   colorHex: string;
   stock?: Record<string, number>;
+  warpTarget?: MapId;
 }
 
 export interface MapDef {

@@ -145,10 +145,14 @@ export const NpcShopModal: React.FC<NpcShopModalProps> = ({
                         : 'bg-[#141a28] border-slate-800'
                   }`}
                 >
-                  <div>
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-start gap-3">
+                    <div className="w-20 h-20 shrink-0 grid place-items-center rounded-md bg-slate-950/70 border border-slate-700">
+                      <ItemPortrait item={s} sex={character.sex} large />
+                    </div>
+                    <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="text-xs font-bold text-amber-200">
-                        <ItemPortrait item={s} sex={character.sex}/> {s.name} +{s.enhanceLevel}
+                        {s.name} +{s.enhanceLevel}
                       </span>
                       <span className="text-[10px] font-mono-tabular uppercase text-slate-300">
                         {s.rarity}
@@ -159,7 +163,11 @@ export const NpcShopModal: React.FC<NpcShopModalProps> = ({
                       {s.magicPower > 0 && `Magia +${s.magicPower} · `}
                       {s.defense > 0 && `Def +${s.defense}`}
                     </div>
+                    {s.setName && <div className="mt-1 text-[11px] text-slate-300">Conjunto: {s.setName}</div>}
+                    {s.classFilter?.length ? <div className="mt-1 text-[11px] text-slate-300">Clases: {s.classFilter.join(', ')}</div> : null}
+                    {s.luck && <div className="text-[11px] text-amber-300">Suerte</div>}
                     <div className="text-[11px] text-emerald-300 mt-0.5">{s.excellentOpt}</div>
+                    </div>
                   </div>
                   <button
                     onClick={() => onBuyItem(s)}

@@ -44,8 +44,8 @@ interface ClassicLoginFlowProps {
   ) => Promise<{ found: true; secretQ1: string; secretQ2: string; source: 'local' | 'cloud' } | { found: false; error?: string }>;
   onRecoverAccount: (input: {
     username: string;
-    answer1: string;
-    answer2: string;
+    slot: 1|2;
+    answer: string;
     newPassword: string;
   }) => Promise<{ ok: boolean; message?: string; error?: string }>;
   onSelectCharacter: (charId: string) => void;
@@ -115,8 +115,8 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
   // Recover Account state
   const [recUser, setRecUser] = useState('');
   const [recQuestions, setRecQuestions] = useState<{ q1: string; q2: string; source: 'local' | 'cloud' } | null>(null);
-  const [recAns1, setRecAns1] = useState('');
-  const [recAns2, setRecAns2] = useState('');
+  const [recSlot,setRecSlot] = useState<1|2>(1);
+  const [recAnswer,setRecAnswer] = useState('');
   const [recNewPass, setRecNewPass] = useState('');
 
   const [authError, setAuthError] = useState<string | null>(null);
@@ -215,8 +215,8 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
     try {
       const res = await onRecoverAccount({
         username: recUser,
-        answer1: recAns1,
-        answer2: recAns2,
+        slot:recSlot,
+        answer:recAnswer,
         newPassword: recNewPass,
       });
       if (!res.ok) {
@@ -226,8 +226,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
         setUsername(recUser.trim().toLowerCase());
         setPassword(recNewPass);
         setRecQuestions(null);
-        setRecAns1('');
-        setRecAns2('');
+        setRecAnswer('');
         setRecNewPass('');
         setAuthTab('login');
       }
@@ -572,7 +571,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
               {/* TAB 3: RECUPERAR CUENTA (Local + Descarga desde Nube) */}
               {authTab === 'recover' && (
                 <div className="space-y-3">
-                  <PrivateBackupPanel restoreOnly onRestored={onRestore} /><button className="text-xs text-amber-200" onClick={onOpenApkCenter}>Configurar servidor de respaldo</button>
+
                   <form onSubmit={handleLookupQuestions} className="flex gap-2 items-end">
                     <div className="flex-1">
                       <label className="block text-xs text-slate-300 mb-1">Nombre de Usuario a Recuperar</label>
@@ -582,6 +581,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
                         onChange={(e) => {
                           setRecUser(e.target.value);
                           setRecQuestions(null);
+                          setRecAnswer('');
                         }}
                         placeholder="Tu ID de cuenta"
                         required
@@ -600,31 +600,17 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
 
                   {recQuestions && (
                     <form onSubmit={handleRecoverSubmit} className="space-y-2.5 p-3 rounded-lg bg-[#090d16] border border-sky-500/40">
-                      <div className="text-[11px] font-mono-tabular text-sky-300">
-                        Origen: {recQuestions.source === 'cloud' ? 'Respaldo en la Nube (descargará tus personajes)' : 'Base Local IndexedDB'}
-                      </div>
-                      <div>
-                        <label className="block text-xs text-amber-200 mb-1">1. {recQuestions.q1}</label>
-                        <input
-                          type="text"
-                          value={recAns1}
-                          onChange={(e) => setRecAns1(e.target.value)}
-                          placeholder="Respuesta secreta 1"
-                          required
-                          className="w-full min-h-[40px] rounded-lg bg-[#080b12] border border-slate-700 px-3 text-sm text-slate-100"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-amber-200 mb-1">2. {recQuestions.q2}</label>
-                        <input
-                          type="text"
-                          value={recAns2}
-                          onChange={(e) => setRecAns2(e.target.value)}
-                          placeholder="Respuesta secreta 2"
-                          required
-                          className="w-full min-h-[40px] rounded-lg bg-[#080b12] border border-slate-700 px-3 text-sm text-slate-100"
-                        />
-                      </div>
+                      <label className="block text-xs text-amber-200">
+                        Elige una pregunta de recuperación
+                        <select value={recSlot} onChange={e=>{setRecSlot(e.target.value === '2' ? 2 : 1); setRecAnswer('');}}
+                          className="block w-full min-h-[40px] rounded-lg bg-[#080b12] border border-slate-700 px-3">
+                          <option value={1}>{recQuestions.q1}</option>
+                          <option value={2}>{recQuestions.q2}</option>
+                        </select>
+                      </label>
+                      <input type="password" value={recAnswer} onChange={e=>setRecAnswer(e.target.value)}
+                        placeholder="Respuesta de recuperación" aria-label="Respuesta de recuperación" required
+                        className="w-full min-h-[40px] rounded-lg bg-[#080b12] border border-slate-700 px-3 text-sm text-slate-100" />
                       <div>
                         <label className="block text-xs text-slate-300 mb-1">Nueva Contraseña</label>
                         <input
@@ -642,7 +628,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
                         disabled={busy}
                         className="w-full min-h-[44px] rounded-lg bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-sm cursor-pointer"
                       >
-                        Verificar Respuestas y Restablecer Clave
+                        Restablecer contraseña
                       </button>
                     </form>
                   )}
@@ -684,6 +670,9 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
               )}
             </div>
 
+            {syncStatus.error && currentAccount && <p role="status" className="text-xs text-amber-300">
+              Partida guardada aquí. {syncStatus.error}
+            </p>}
             {!creatingChar && <details className="text-xs text-amber-200"><summary>Copia y recuperación de cuenta</summary>
               <PrivateBackupPanel key={currentAccount?.id} onRestored={onRestore} />
               <button onClick={onOpenApkCenter}>Configurar servidor de respaldo</button></details>}
@@ -807,7 +796,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
       )}
 
       <div className="text-[11px] text-slate-400 font-mono-tabular text-center pt-2 shrink-0">
-        Tu aventura se guarda en este dispositivo.
+        Tu aventura se guarda en este dispositivo. <button type="button" className="underline text-amber-200" onClick={onOpenApkCenter}>Restaurar copia</button>
       </div>
     </div>
   );

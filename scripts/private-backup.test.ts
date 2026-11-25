@@ -79,3 +79,38 @@ test('another client opens the wrapped backup by normalized login; collisions ca
     await rm(root,{recursive:true,force:true});
   }
 });
+
+test('online recovery accepts either single answer without exposing the sealed recovery records', async () => {
+  const {publishAccountLink,lookupAccountLink,lookupRecoveryLink,lookupRecoveryQuestions} = await import('../src/services/accountLink.ts');
+  const root = await mkdtemp(join(tmpdir(),'mu-recovery-'));
+  const app = express(); app.use(express.json()); mountPrivateBackup(app,root,'https://apk.mugroup.invalid','ab'.repeat(32));
+  const server = app.listen(0,'127.0.0.1'); await once(server,'listening');
+  const endpoint = new URL('http://127.0.0.1:'+ (server.address() as AddressInfo).port+'/api/private-backup');
+  try {
+    const code = generateRecoveryCode();
+    const account = {id:'fixture',username:'mage',passwordHash:'before',updatedAt:1} as MuAccount;
+    await syncEncryptedBackup(endpoint,code,{account,characters:[]});
+    await publishAccountLink(endpoint,'mage','before',code,1);
+    await assert.rejects(lookupRecoveryQuestions(endpoint,'mage'));
+    const questions = [{question:'Primer acertijo de prueba',verifier:'first'},{question:'Segundo acertijo de prueba',verifier:'second'}] as [ {question:string;verifier:string}, {question:string;verifier:string} ];
+    assert.equal(await publishAccountLink(endpoint,'mage','before',code,1,questions),true);
+    assert.deepEqual(await lookupRecoveryQuestions(endpoint,' MAGE '), questions.map(q=>q.question));
+    await assert.rejects(lookupRecoveryLink(endpoint,'mage',1,'second'));
+    assert.equal(await lookupRecoveryLink(endpoint,'mage',1,'first'),code);
+    const recovered = await lookupRecoveryLink(endpoint,'mage',2,'second');
+    await syncEncryptedBackup(endpoint,recovered,{account:{...account,passwordHash:'after',updatedAt:2},characters:[]});
+    await publishAccountLink(endpoint,'mage','after',recovered,2,questions);
+    await assert.rejects(lookupAccountLink(endpoint,'mage','before'));
+    assert.equal(await lookupAccountLink(endpoint,'mage','after'),code);
+    const file = (await readdir(root)).find(f=>f.startsWith('login-'))!;
+    const saved = await readFile(join(root,file),'utf8');
+    assert(!saved.includes(questions[0].question));
+    assert(!saved.includes(questions[1].verifier));
+    assert(!saved.includes(code));
+    for (let i=0;i<4;i++) await assert.rejects(lookupRecoveryLink(endpoint,'mage',1,'incorrect'));
+    await assert.rejects(lookupRecoveryLink(endpoint,'mage',1,'first'),/Demasiados intentos/);
+  } finally {
+    await new Promise<void>(resolve=>server.close(()=>resolve()));
+    await rm(root,{recursive:true,force:true});
+  }
+});
