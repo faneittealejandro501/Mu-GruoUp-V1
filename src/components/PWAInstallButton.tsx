@@ -1,0 +1,121 @@
+import React, { useEffect, useState, useSyncExternalStore } from 'react';
+import { Download, Smartphone, WifiOff } from 'lucide-react';
+
+import { offlineInstallReady } from '../services/offlineInstall';
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
+let pendingPrompt: BeforeInstallPromptEvent | null = null;
+const listeners = new Set<() => void>();
+function setPrompt(prompt: BeforeInstallPromptEvent | null) {
+  pendingPrompt = prompt;
+  listeners.forEach(fn => fn());
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', event => {
+    event.preventDefault();
+    setPrompt(event as BeforeInstallPromptEvent);
+  });
+  window.addEventListener('appinstalled', () => setPrompt(null));
+}
+function subscribe(fn: () => void) {
+  listeners.add(fn);
+  return () => { listeners.delete(fn); };
+}
+
+interface PWAInstallButtonProps {
+  onOpenApkCenter?: () => void;
+}
+
+export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ onOpenApkCenter }) => {
+  const deferredPrompt = useSyncExternalStore(subscribe, () => pendingPrompt);
+  const [isInstalled, setIsInstalled] = useState(false);
+
+  const [help,setHelp] = useState(false);
+  const [offlineReady, setOfflineReady] = useState(false);
+  useEffect(() => {
+    let mounted = true;
+    const verify = () => { void offlineInstallReady().then(ok => { if (mounted) setOfflineReady(ok); }).catch(() => {}); };
+    verify();
+    if ('serviceWorker' in navigator) {
+      void navigator.serviceWorker.ready.then(() => { if (mounted) verify(); });
+      navigator.serviceWorker.addEventListener('controllerchange', verify);
+    }
+    return () => { mounted = false; navigator.serviceWorker?.removeEventListener('controllerchange', verify); };
+  }, []);
+
+  useEffect(() => {
+    const checkStandalone = () => {
+      const standalone =
+        window.matchMedia?.('(display-mode: standalone)').matches ||
+        (navigator as Navigator & { standalone?: boolean }).standalone === true;
+      setIsInstalled(Boolean(standalone));
+    };
+    checkStandalone();
+
+    const onAppInstalled = () => setIsInstalled(true);
+    window.addEventListener('appinstalled', onAppInstalled);
+    return () => {
+      window.removeEventListener('appinstalled', onAppInstalled);
+    };
+  }, []);
+
+  const handleClick = async () => {
+    if (deferredPrompt && offlineReady) {
+      void navigator.storage?.persist?.().catch(() => {});
+      setPrompt(null);
+      try { await deferredPrompt.prompt(); } catch { setHelp(true); }
+      return;
+    }
+    setHelp(true);
+  };
+
+  if (isInstalled) {
+    return null;
+  }
+
+  return (<>
+    <button
+      type="button"
+      disabled={!onOpenApkCenter && (!deferredPrompt || !offlineReady)}
+      onClick={handleClick}
+      className="min-h-[38px] px-3 rounded-lg bg-[#162033] hover:bg-slate-700 border border-amber-500/50 text-amber-200 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+    >
+      {deferredPrompt ? <Download className="w-3.5 h-3.5 text-emerald-400" /> : <Smartphone className="w-3.5 h-3.5 text-amber-400" />}
+      Descargar APK-WEB
+    </button>
+    {help && <div role="dialog" aria-label="Descargar APK-WEB" className="fixed z-50 top-16 right-4 max-w-xs p-4 rounded-lg bg-slate-950 border border-amber-500 text-sm text-amber-100">
+      {offlineReady ? 'Cliente completo. Para instalarlo, abre el menú del navegador y elige Instalar aplicación o Añadir a inicio.' : 'Mantén esta página abierta con internet mientras se guarda el cliente completo para jugar sin conexión.'}
+      <button className="block mt-3 underline" onClick={()=>setHelp(false)}>Cerrar</button></div>}</>
+  );
+};
+
+export const OfflineIndicator: React.FC = () => {
+  const [online, setOnline] = useState(() => (typeof navigator !== 'undefined' ? navigator.onLine : true));
+
+  useEffect(() => {
+    const goOnline = () => setOnline(true);
+    const goOffline = () => setOnline(false);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
+  }, []);
+
+  if (online) return null;
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="fixed bottom-3 left-1/2 -translate-x-1/2 z-50 px-3 py-1 rounded-full bg-amber-950/95 border border-amber-500/70 text-[11px] font-semibold text-amber-200 inline-flex items-center gap-1.5 shadow-lg pointer-events-none"
+    >
+      <WifiOff className="w-3.5 h-3.5 text-amber-400" />
+      <span>Modo Offline · Guardado automático en IndexedDB</span>
+    </div>
+  );
+};
