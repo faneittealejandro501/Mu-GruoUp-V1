@@ -53,11 +53,11 @@ Pages hospeda el juego estático. Para sincronizar partidas desde Pages, ejecuta
 
 <!-- coderabbit-ai-generated:v1 -->
 
-<!-- coderabbit-ai-generated-section:v1:c0302552f1f60e64036f9965af72f069825d9459cb9ddede58abce83113a1554 -->
+<!-- coderabbit-ai-generated-section:v1:6d4621f0ebbef0e38453a7cb79cbd42dc2ed234dd03512e69ecc790578e90799 -->
 
 ## APK Android: cliente completo y multijugador local
 
-**Descargar APK Android** aparece en la página de inicio y en **Web / APKweb** cuando hay un APK publicado junto al sitio. En Actions, el artefacto **mugroup-android** contiene el instalador. El APK incluye los modelos, mapas, texturas, audio y datos base; puedes crear una cuenta y jugar en solitario desde el primer inicio sin internet. Requiere Android 8 o posterior y Android System WebView actualizado. El APK guarda su propia partida: exporta tu respaldo JSON de la PWA e impórtalo desde **Web / APKweb** en Android.
+Abre **Descargar APK Android** desde la pantalla de acceso o el panel **Web / APKweb** para guardar el instalador `MuGro-up-Android.apk`. Abre el archivo descargado en Android para instalarlo. Si prefieres instalar el juego en el navegador, usa **Instalar PWA**. En GitHub Actions, el artefacto **mugroup-android** también contiene el instalador. El APK incluye los modelos, mapas, texturas, audio y datos base; puedes crear una cuenta y jugar en solitario desde el primer inicio sin internet. Requiere Android 8 o posterior y Android System WebView actualizado. El APK guarda su propia partida: exporta tu respaldo JSON de la PWA e impórtalo desde **Web / APKweb** en Android.
 
 - **Wi-Fi local:** abre el APK en los dos dispositivos y conéctalos a la misma red o al punto de acceso del anfitrión. El anfitrión crea la sala y comparte la dirección IP que muestra el juego y el código. El invitado introduce ambos en **Salas locales → Wi-Fi local**. Usa IPv4 y el puerto TCP 32183; una red que aísla a sus clientes puede impedir la conexión.
 - **Bluetooth directo:** empareja primero los dispositivos en **Ajustes de Android → Bluetooth**. En el APK, permite el acceso a dispositivos cercanos. El anfitrión crea una sala Bluetooth, y el invitado usa el código y selecciona el equipo anfitrión de la lista de dispositivos emparejados. No hace falta activar el Wi-Fi ni tener acceso a internet.
@@ -69,10 +69,14 @@ Instala JDK 21, Android SDK Platform 35, Build Tools 35.0.0 y el comando `zip`. 
 
 ```sh
 bun run build
-bun run build:android
+bun run build:android dist/MuGro-up-Android.apk
 ```
 
-El resultado es `build/android/MuGro-up-Android.apk`. Sin credenciales se genera un APK de prueba con identificador independiente; dos equipos deben instalar la misma compilación para la prueba. Para publicar desde la rama principal, guarda la firma permanente en los secretos de Actions `MU_ANDROID_KEYSTORE_B64`, `MU_ANDROID_KEY_ALIAS`, `MU_ANDROID_STORE_PASSWORD` y `MU_ANDROID_KEY_PASSWORD`. Con la firma configurada, el flujo publica el APK junto al sitio y habilita la descarga. Incrementa la versión de `public/ota-manifest.json` para cada actualización y conserva la clave: Android la usa para instalar una actualización sobre la aplicación existente.
+Sirve `dist/` para ofrecer la descarga desde la web. El comando genera el APK y su índice `dist/android-download.json`. Si ejecutas `bun run build:android` sin indicar el destino, deja el instalador en `build/android/` para pruebas locales.
+
+GitHub Actions publica los dos archivos junto al sitio de la rama principal. Si no hay firma permanente, el botón identifica la compilación como **prueba**. Incluye todo el juego y tiene un identificador separado del APK de distribución. Si cambia la clave de prueba entre compilaciones, exporta tu partida antes de desinstalar la anterior e importa la copia en la nueva.
+
+Para que Android pueda instalar las futuras actualizaciones sobre la aplicación existente, configura en Actions los secretos `MU_ANDROID_KEYSTORE_B64`, `MU_ANDROID_KEY_ALIAS`, `MU_ANDROID_STORE_PASSWORD` y `MU_ANDROID_KEY_PASSWORD`. Conserva la misma clave e incrementa la versión de `public/ota-manifest.json` en cada actualización.
 
 <!-- /coderabbit-ai-generated:v1 -->
 

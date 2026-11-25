@@ -14,8 +14,10 @@ staging="$(mktemp -d)"
 trap 'rm -rf "$staging"' EXIT
 mkdir -p "$staging"/{assets/client,classes,dex,res/drawable,generated}
 package_options=()
+channel=release
 if [[ -z "${MU_ANDROID_KEYSTORE:-}" ]]; then
   package_options=(--rename-manifest-package com.mugroup.offline.preview)
+  channel=preview
 fi
 cp public/pwa-192x192.png "$staging/res/drawable/mugroup.png"
 node --input-type=module - "$staging" <<'NODE'
@@ -80,8 +82,10 @@ else
     --ks-pass pass:android --key-pass pass:android --out "$staging/signed.apk" "$staging/aligned.apk"
 fi
 "$tools/apksigner" verify --min-sdk-version 26 "$staging/signed.apk"
+chmod 0644 "$staging/signed.apk"
 mv "$staging/signed.apk" "$out"
 if [[ "$out" == dist/MuGro-up-Android.apk ]]; then
-  printf '{"file":"MuGro-up-Android.apk","version":"%s"}\n' "$version" > dist/android-download.json
+  printf '{"file":"MuGro-up-Android.apk","version":"%s","channel":"%s"}\n' "$version" "$channel" > dist/android-download.json
+  chmod 0644 dist/android-download.json
 fi
 printf 'APK listo: %s\n' "$out"

@@ -33,7 +33,7 @@ export default defineConfig({
           writeFileSync(new URL('./dist/offline-files.json', import.meta.url), index);
           return { manifest: [...urls, { url: 'offline-files.json', revision: createHash('sha256').update(index).digest('hex'), size: Buffer.byteLength(index) }], warnings: [] };
         }],
-        globIgnores: ['assets/aistudio/**'],
+        globIgnores: ['assets/aistudio/**', 'android-download.json'],
         runtimeCaching: [
           {
             urlPattern: /\/mugroup\/.*/i,

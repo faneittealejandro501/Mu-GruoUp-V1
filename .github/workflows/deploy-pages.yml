@@ -54,31 +54,31 @@ jobs:
           java-version: 21
 
       - name: Prepare Android SDK
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+        with:
+          packages: 'platforms;android-35 build-tools;35.0.0'
+          log-accepted-android-sdk-licenses: false
 
       - name: Package Android client
         env:
-          MU_ANDROID_KEYSTORE_B64: ${{ github.event_name != 'pull_request' && secrets.MU_ANDROID_KEYSTORE_B64 || '' }}
-          MU_ANDROID_KEY_ALIAS: ${{ github.event_name != 'pull_request' && secrets.MU_ANDROID_KEY_ALIAS || '' }}
-          MU_ANDROID_STORE_PASSWORD: ${{ github.event_name != 'pull_request' && secrets.MU_ANDROID_STORE_PASSWORD || '' }}
-          MU_ANDROID_KEY_PASSWORD: ${{ github.event_name != 'pull_request' && secrets.MU_ANDROID_KEY_PASSWORD || '' }}
+          MU_ANDROID_KEYSTORE_B64: ${{ github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch && secrets.MU_ANDROID_KEYSTORE_B64 || '' }}
+          MU_ANDROID_KEY_ALIAS: ${{ github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch && secrets.MU_ANDROID_KEY_ALIAS || '' }}
+          MU_ANDROID_STORE_PASSWORD: ${{ github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch && secrets.MU_ANDROID_STORE_PASSWORD || '' }}
+          MU_ANDROID_KEY_PASSWORD: ${{ github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch && secrets.MU_ANDROID_KEY_PASSWORD || '' }}
         run: |
-          if [[ -n "$MU_ANDROID_KEYSTORE_B64" && "$GITHUB_REF" == refs/heads/main ]]; then
+          if [[ -n "$MU_ANDROID_KEYSTORE_B64" ]]; then
             export MU_ANDROID_KEYSTORE="$(mktemp)"
             trap 'rm -f "$MU_ANDROID_KEYSTORE"' EXIT
             printf %s "$MU_ANDROID_KEYSTORE_B64" | base64 --decode > "$MU_ANDROID_KEYSTORE"
-            bun run build:android dist/MuGro-up-Android.apk
-            mkdir -p build/android
-            cp dist/MuGro-up-Android.apk build/android/
-          else
-            bun run build:android
           fi
+          bun run build:android dist/MuGro-up-Android.apk
+          test -s dist/android-download.json
 
       - name: Upload Android client
         uses: actions/upload-artifact@v7
         with:
           name: mugroup-android
-          path: build/android/MuGro-up-Android.apk
+          path: dist/MuGro-up-Android.apk
           if-no-files-found: error
           compression-level: 0
 
@@ -100,7 +100,7 @@ jobs:
           include-hidden-files: true
 
   deploy:
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch
     permissions:
       pages: write
       id-token: write
