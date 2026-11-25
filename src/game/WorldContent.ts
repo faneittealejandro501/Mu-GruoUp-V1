@@ -423,7 +423,18 @@ export class FlyffWorldStreamer {
     this.manifest = (await mRes.json()) as MundoManifest;
     const buf = await hRes.arrayBuffer();
     this.heightmap = new Float32Array(buf);
+    for (const tile of this.manifest.tiles) for (const w of tile.water ?? [])
+      this.waterLevels.set(Math.floor(w.z / 32)*1024 + Math.floor(w.x / 32), w.height);
     return this.manifest;
+  }
+
+  private waterLevels = new Map<number,number>();
+
+  public isHuntingLand(x:number,z:number): boolean {
+    if (!this.manifest || x < 0 || z < 0 || x >= this.manifest.sizeMeters || z >= this.manifest.sizeMeters) return false;
+    const water = this.waterLevels.get(Math.floor(z/32)*1024 + Math.floor(x/32)) ?? 0;
+    const ground = this.getGroundHeight(x,z);
+    return ground > Math.max(1,water) + .3;
   }
 
   public getGroundHeight(x: number, z: number): number {
@@ -606,7 +617,12 @@ export class FlyffWorldStreamer {
 
     const waterMeshes: Mesh[] = [];
 
-    const water = createWaterMesh(`water_${tileDef.id}`, this.scene, tileDef.water ?? []);
+    const water = createWaterMesh(`water_${tileDef.id}`, this.scene, [
+      ...(tileDef.water ?? []),
+      // The empty seabed is flat at y=0. A continuous sea surface also covers
+      // cells absent from the original lake/river table, below authored land.
+      { x:tileDef.x+tileDef.sizeMeters/2, z:tileDef.z+tileDef.sizeMeters/2, size:tileDef.sizeMeters, height:1, textureId:1 },
+    ]);
     if (water) {
       this.waterMaterial ??= createWaterMaterial(this.scene);
       updateWaterMaterial(this.waterMaterial, this.scene, clock);

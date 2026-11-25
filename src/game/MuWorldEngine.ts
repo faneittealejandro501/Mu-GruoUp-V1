@@ -1,3 +1,4 @@
+import madrigalSites from '../data/madrigalSpawns.json';
 import { capitalPortals, nearestRegion } from './worldRegions';
 import creatureModels from '../data/creatureModels.json' with {type:'json'};
 import { flightHeight } from './content/WingRig';
@@ -1102,7 +1103,9 @@ export class MuWorldEngine {
       ? [] : map.npcs)];
 
     const npcGlbs = [...new Set(npcList.map((n) => resolveNpcGlb(n.model, n.role)))];
-    await Promise.all(npcGlbs.map((g) => this.getOrLoadEntityContainer(g)));
+    // A live revision can arrive before the first terrain stream finishes.
+    // Never mark the region populated against an empty height/water table.
+    await Promise.all([this.flyff.world.ensureManifest(), ...npcGlbs.map(g=>this.getOrLoadEntityContainer(g))]);
     if (token !== this.entityBuildToken || this.disposed) return;
 
     for (const npcDef of npcList) {
@@ -1152,7 +1155,7 @@ export class MuWorldEngine {
     this.monsterRoamLimit = 40;
     this.monsterScan = 0;
     const size = MU_MAPS[0].worldSize;
-    const camps = scatterCamps('madrigal',size,5000,(x,z)=>!this.isSafePoint(x,z,24));
+    const camps = scatterCamps('madrigal',size,5000,(x,z)=>this.flyff.world.isHuntingLand(x,z) && !this.isSafePoint(x,z,12),madrigalSites);
     const sites = new Map(camps.filter((_,i)=>i%CAMP_SIZE === 0).map(m=>[m.camp,nearestRegion(MU_MAPS,m.x,m.z).id]));
     for (const map of MU_MAPS) this.addRegionMonsters(map,camps.filter(m=>sites.get(m.camp) === map.id),live,adminCfg);
     this.entityRevision = live.revision;
@@ -1215,8 +1218,8 @@ export class MuWorldEngine {
     }
 
     const presentGlbs = new Set(templates.map((t) => t.glb));
-    for (let i = 0; i < AVAILABLE_MONSTER_GLBS.length; i++) {
-      const glb = AVAILABLE_MONSTER_GLBS[i];
+    for (let i = 0; i < creatureModels.length; i++) {
+      const glb = creatureModels[i];
       if (presentGlbs.has(glb)) continue;
       presentGlbs.add(glb);
       const base = glb.replace('monstruos/', '').replace('.glb', '');
@@ -1243,7 +1246,14 @@ export class MuWorldEngine {
     const total = Number(adminCfg['world-rules'].maps?.[mapKey]?.targetMonsterCount) || 40000;
     const campCount = Math.min(5000, Math.max(1, Math.ceil(total / CAMP_SIZE)));
     const placements: { entry: Template; mx: number; mz: number; angle: number; camp?: number }[] = camps.slice(0,campCount*CAMP_SIZE).map(
-      ({ camp, x, z, heading }) => ({ entry: templates[camp % templates.length], mx: x, mz: z, angle: heading, camp }),
+      ({ camp, x, z, heading, site }) => {
+        let entry = templates[camp % templates.length];
+        if (site) {
+          const matched = templates.find(t=>t.glb === 'monstruos/'+site.model+'.glb')!;
+          entry = { ...matched, def:{...matched.def, name:site.name, level:site.level} };
+        }
+        return {entry, mx:x, mz:z, angle:heading, camp};
+      },
     );
 
     const extraGroups = live.groups.filter(group => group.map === map.id);
@@ -1289,7 +1299,7 @@ export class MuWorldEngine {
         const angle = n * 2.399963;
         const mX = group.x + Math.cos(angle) * Math.sqrt(n) * 3;
         const mZ = group.z + Math.sin(angle) * Math.sqrt(n) * 3;
-        if (mX >= 40 && mX <= 3032 && mZ >= 40 && mZ <= 3032 && !this.isSafePoint(mX, mZ, 10))
+        if (mX >= 40 && mX <= 3032 && mZ >= 40 && mZ <= 3032 && this.flyff.world.isHuntingLand(mX,mZ) && !this.isSafePoint(mX, mZ, 10))
           placements.push({ entry: { ...template, def }, mx: mX, mz: mZ, angle });
       }
     }
@@ -1332,10 +1342,10 @@ export class MuWorldEngine {
     for (const {e,w} of active) {
       const rule = getLiveWorld().invasions[e.id];
       const sites = rule?.x !== undefined && rule.z !== undefined ? positionsAt({x: rule.x, z: rule.z}, e.count)
-        : invasionSites(e,w.start,this.currentMap.worldSize || 3072,(x,z)=>this.isSafePoint(x,z,45) || nearestRegion(MU_MAPS,x,z).id !== e.map);
+        : invasionSites(e,w.start,this.currentMap.worldSize || 3072,(x,z)=>!this.flyff.world.isHuntingLand(x,z) || this.isSafePoint(x,z,45) || nearestRegion(MU_MAPS,x,z).id !== e.map);
       const hp = (level99?.hp ?? 11400)*e.hp, attack = (level99?.damage ?? 425)*e.attack;
       sites.forEach(({x,z},i)=>{
-        if (this.isSafePoint(x,z,45)) return;
+        if (!this.flyff.world.isHuntingLand(x,z) || this.isSafePoint(x,z,45)) return;
         const id = ['invasion',this.heroStats!.id,e.id,i].join(':');
         if (localStorage.getItem(id) === String(w.start)) return;
         const old = retained.get(id);
@@ -1625,7 +1635,7 @@ export class MuWorldEngine {
         const dirZ = (this.heroZ - mob.z) / d;
         const nx = mob.x + dirX * (mob.def.moveSpeed ?? 3.4) * dt;
         const nz = mob.z + dirZ * (mob.def.moveSpeed ?? 3.4) * dt;
-        if (!this.isSafePoint(nx, nz, 2) && Math.hypot(nx - mob.homeX, nz - mob.homeZ) <= (mob.def.roamRadius ?? 40)) {
+        if (this.flyff.world.isHuntingLand(nx,nz) && !this.isSafePoint(nx, nz, 2) && Math.hypot(nx - mob.homeX, nz - mob.homeZ) <= (mob.def.roamRadius ?? 40)) {
           mob.x = nx;
           mob.z = nz;
         }
@@ -1636,7 +1646,7 @@ export class MuWorldEngine {
         if (homeDist > 1.5) {
           const nextX = mob.x + (mob.homeX - mob.x) * 0.7 * dt;
           const nextZ = mob.z + (mob.homeZ - mob.z) * 0.7 * dt;
-          if (!this.isSafePoint(nextX, nextZ)) {
+          if (this.flyff.world.isHuntingLand(nextX,nextZ) && !this.isSafePoint(nextX, nextZ)) {
             mob.x = nextX;
             mob.z = nextZ;
           }

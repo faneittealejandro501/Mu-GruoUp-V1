@@ -259,7 +259,7 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
   const adjustSelectedScale = (delta: number) => {
     if (!selectedEditId) return;
     const cur = buttonLayouts[selectedEditId] || DEFAULT_BUTTON_LAYOUTS[selectedEditId];
-    const nextScale = Math.max(0.65, Math.min(1.65, Number((cur.scale + delta).toFixed(2))));
+    const nextScale = Math.max(0.35, Math.min(2, Number((cur.scale + delta).toFixed(2))));
     onUpdateButtonLayouts({
       ...buttonLayouts,
       [selectedEditId]: { ...cur, scale: nextScale },
@@ -269,12 +269,14 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
   const wrapButton = (id: HudButtonId, children: React.ReactNode) => {
     const layout = buttonLayouts[id] || DEFAULT_BUTTON_LAYOUTS[id];
     const isSelected = editMode && selectedEditId === id;
-    const isPassiveDisplay = !editMode && (id === 'minimap' || id === 'targetMonster' || id === 'damageBox');
+    const isPassiveDisplay = !editMode && (id === 'minimap' || id === 'targetMonster' || id === 'damageBox' || id === 'status' || id === 'vitals');
     const zClass = id === 'editToolbar' ? 'z-40' : id === 'damageBox' ? 'z-15' : 'z-20';
     return (
       <div
         key={id}
-        onPointerDown={(e) => startDragButton(id, e)}
+        data-hud-layout={id}
+        onPointerDownCapture={(e) => startDragButton(id, e)}
+        onClickCapture={e => { if (editMode && id !== 'editToolbar') { e.preventDefault(); e.stopPropagation(); } }}
         onPointerMove={(e) => moveDragButton(id, e)}
         onPointerUp={endDragButton}
         onPointerCancel={endDragButton}
@@ -284,7 +286,7 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
           transform: `translate(-50%, -50%) scale(${layout.scale})`,
         }}
         className={`fixed ${zClass} touch-none select-none ${
-          isPassiveDisplay ? 'pointer-events-none' : ''
+          isPassiveDisplay ? 'pointer-events-none' : 'pointer-events-auto'
         } ${
           editMode
             ? `cursor-move rounded-xl p-1 ${
@@ -365,7 +367,7 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
         )}
 
       {/* TOP-LEFT: Compact Character, Safe Zone / Hunting Zone, Coords & FPS */}
-      <div className="pointer-events-none fixed top-2.5 left-3 z-20 rounded-lg bg-[#0d121c]/92 border border-amber-700/50 px-2 lg:px-3 py-1 lg:py-1.5 shadow-lg space-y-0.5 max-w-[38vw] lg:max-w-[43vw]">
+      {wrapButton('status', <div className="pointer-events-none rounded-lg bg-[#0d121c]/92 border border-amber-700/50 px-2 lg:px-3 py-1 lg:py-1.5 shadow-lg space-y-0.5 max-w-[38vw] lg:max-w-[43vw]">
         <div className="flex items-center gap-1.5 lg:gap-2 text-[10px] lg:text-xs flex-wrap">
           <span className="font-display font-bold text-amber-300 truncate max-w-[110px] lg:max-w-none">{character.name}</span>
           <span className="font-mono-tabular text-slate-300">
@@ -398,11 +400,11 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
             ({worldTelemetry.x}, {worldTelemetry.z})
           </span>
         </div>
-      </div>
+      </div>)}
 
       {/* TOP-LEFT SECONDARY: Quick Oracle, APK / Cloud Sync Buttons + Active Effects */}
-      {!editMode && (
-        <div className="fixed top-[54px] lg:top-[62px] left-3 z-20 flex flex-col gap-1.5 max-w-[44vw] lg:max-w-[56vw]">
+      {wrapButton('actions',
+        <div className=" flex flex-col gap-1.5 max-w-[44vw] lg:max-w-[56vw]">
           <div className="flex items-center gap-1.5 flex-wrap">
             <InvasionBoard />
             <button
@@ -420,7 +422,7 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
           </div>
 
           {activeEffects.length > 0 && (
-            <div className="fixed top-[96px] lg:top-[104px] left-[132px] sm:left-[152px] z-15 flex items-center gap-1.5 flex-wrap max-w-[30vw] pointer-events-none">
+            <div className="flex items-center gap-1.5 flex-wrap max-w-[30vw] pointer-events-none">
               {activeEffects.map((eff) => (
                 <div
                   key={eff.id}
@@ -572,14 +574,14 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
         )}
 
       {/* NEARBY NPC INTERACT BUTTON */}
-      {nearbyNpc && !editMode && (
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-20">
+      {(nearbyNpc || editMode) && wrapButton('talk',
+        <div>
           <button
-            onClick={() => onTalkNpc(nearbyNpc)}
+            onClick={() => nearbyNpc && onTalkNpc(nearbyNpc)}
             className="min-h-[42px] px-4 rounded-xl bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-xs inline-flex items-center gap-2 shadow-2xl border border-amber-200 cursor-pointer"
           >
             <MessageSquare className="w-4 h-4" />
-            {nearbyNpc.warpTarget ? 'Viajar a' : 'Hablar con'} {nearbyNpc.name}
+            {nearbyNpc?.warpTarget ? 'Viajar a' : 'Hablar con'} {nearbyNpc?.name ?? 'NPC'}
           </button>
         </div>
       )}
@@ -1133,7 +1135,7 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
       )}
 
       {/* AUTHENTIC MU ONLINE BOTTOM HP/MP GLOBES + SD/AG/XP BAR */}
-      <div className="pointer-events-none fixed bottom-0 left-1/2 -translate-x-1/2 z-10 flex items-end gap-1 sm:gap-2 pb-1">
+      {wrapButton('vitals', <div className="pointer-events-none flex items-end gap-1 sm:gap-2 pb-1">
         <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#130b0d] border-2 border-amber-700/90 overflow-hidden shadow-2xl flex items-center justify-center">
           <div
             className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-rose-800 via-rose-600 to-red-500 transition-all"
@@ -1186,7 +1188,7 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
             {character.mp}
           </span>
         </div>
-      </div>
+      </div>)}
 
       {/* SMALL MU ONLINE SKILL & 5-POWER COMBO CONFIGURATOR POPOVER */}
       {showComboPicker && (

@@ -41,6 +41,7 @@ jobs:
 
       - name: Build
         env:
+          REQUIRE_ACCOUNT_SERVICE: ${{ github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch }}
           VITE_WORLD_SERVER_URL: ${{ vars.VITE_WORLD_SERVER_URL }}
           VITE_BACKUP_URL: ${{ vars.VITE_BACKUP_URL }}
         run: |

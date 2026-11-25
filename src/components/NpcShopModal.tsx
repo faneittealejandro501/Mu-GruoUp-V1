@@ -1,4 +1,6 @@
-import { ItemPortrait } from './ItemPortrait';
+import { ShopModel } from './ShopModel';
+import { artisanWeapon } from '../data/artisanEquipment';
+import { ItemPortrait, itemModelFile } from './ItemPortrait';
 import { ITEM_CATALOG } from '../data/itemCatalog';
 import { getAdminConfigSync } from '../services/adminConfigService';
 import React, { useState } from 'react';
@@ -31,6 +33,7 @@ export const NpcShopModal: React.FC<NpcShopModalProps> = ({
   onSellItem,
   onChaosMixWing,
 }) => {
+  const [preview,setPreview]=useState<string|null>(null);
   const [tab, setTab] = useState<'buy' | 'jewels' | 'sell' | 'chaos'>(
     npc?.role === 'chaos_goblin' ? 'chaos' : 'buy',
   );
@@ -152,7 +155,7 @@ export const NpcShopModal: React.FC<NpcShopModalProps> = ({
                     <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-xs font-bold text-amber-200">
-                        {s.name} +{s.enhanceLevel}
+                        {s.name.replace(/ \+\d+$/, '')} +{s.enhanceLevel}
                       </span>
                       <span className="text-[10px] font-mono-tabular uppercase text-slate-300">
                         {s.rarity}
@@ -169,6 +172,11 @@ export const NpcShopModal: React.FC<NpcShopModalProps> = ({
                     <div className="text-[11px] text-emerald-300 mt-0.5">{s.excellentOpt}</div>
                     </div>
                   </div>
+                  {(itemModelFile(s) || artisanWeapon(s.name)) && <>
+                    <button className="text-xs text-sky-300 text-left py-1" aria-expanded={preview===s.id}
+                      onClick={()=>setPreview(preview===s.id ? null : s.id)}>{preview===s.id ? 'Cerrar vista 3D' : 'Ver modelo 3D'}</button>
+                    {preview===s.id && <ShopModel item={s} file={itemModelFile(s)} />}
+                  </>}
                   <button
                     onClick={() => onBuyItem(s)}
                     disabled={character.zen < s.zenCost}
@@ -189,7 +197,7 @@ export const NpcShopModal: React.FC<NpcShopModalProps> = ({
                   className="p-3 rounded-lg bg-[#141a28] border border-slate-800 flex items-center justify-between gap-3"
                 >
                   <div>
-                    <div className={`text-xs font-bold ${j.color}`}>{j.name}</div>
+                    <div className={`flex items-center gap-2 text-xs font-bold ${j.color}`}><Gem aria-hidden="true" fill="currentColor" className="size-6" />{j.name}</div>
                     <div className="text-[11px] text-slate-400">{j.desc}</div>
                   </div>
                   <button
@@ -218,7 +226,8 @@ export const NpcShopModal: React.FC<NpcShopModalProps> = ({
                       key={it.id}
                       className="p-3 rounded-lg bg-[#141a28] border border-slate-800 flex items-center justify-between gap-2"
                     >
-                      <div>
+                      <ItemPortrait item={it} sex={character.sex} />
+                      <div className="flex-1">
                         <div className="text-xs font-bold text-slate-100">
                           {it.name} +{it.enhanceLevel}
                         </div>
@@ -252,6 +261,7 @@ export const NpcShopModal: React.FC<NpcShopModalProps> = ({
                   className="p-4 rounded-xl bg-[#141a28] border border-amber-600/50 space-y-2"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
+                    <ItemPortrait item={{slot:'wings',name:rec.wingNames[character.classType],enhanceLevel:rec.enhanceLevel}} sex={character.sex}/>
                     <span className="text-sm font-bold text-amber-300">{rec.title}</span>
                     <span className="text-xs font-mono-tabular text-emerald-300">
                       {rec.wingNames[character.classType]} (+{rec.enhanceLevel})

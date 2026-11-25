@@ -467,6 +467,18 @@ export const MU_SHOP_CATALOG: ShopItemDef[] = [
     zenCost: 11500,
     vendorRoles: ['blacksmith', 'chaos_goblin'],
   },
+  ...([
+    ['angel','Alas de Ángel MU (OpenMU)',6], ['celestial','Alas Celestiales',7],
+    ['elf','Alas de Espíritu Élfico (MU)',8], ['prophet','Alas del Profeta de Madrigal',9],
+    ['dragon','Alas de Dragón MU (OpenMU)',9], ['soul','Wings of Soul (Lv2)',10],
+    ['dark','Cape of Lord (Lv2)',10], ['storm','Wing of Storm +13',13],
+    ['eternal','Alas Eternas MU (OpenMU Evo 4)',12], ['emperor','Manto del Emperador MU (OpenMU Evo 4)',13],
+    ['curse','Alas Malditas Curse MU (OpenMU Evo 4)',14],
+  ] as const).map(([key,name,level]): ShopItemDef => ({
+    id:'shop_wing_'+key, name, setName:'Alas de Madrigal y MU', slot:'wings', category:'wings', rarity:'excellent', enhanceLevel:level,
+    minDmg:2*level, maxDmg:3*level, magicPower:2*level, defense:4*level, luck:false,
+    excellentOpt:'', zenCost:level*level*600, vendorRoles:['magic','chaos_goblin'],
+  })),
   // Alas y Joyería
   {
     id: 'shop_wing_feather',
