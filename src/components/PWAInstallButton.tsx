@@ -35,51 +35,12 @@ const APK_FILE = 'MuGro-up-Android.apk';
 const apkButtonClass = 'min-h-[38px] px-3 rounded-lg bg-amber-500 text-slate-950 text-xs font-bold inline-flex items-center gap-1.5 whitespace-nowrap cursor-pointer';
 
 export const AndroidDownloadLink: React.FC = () => {
-  const [channel, setChannel] = useState<'release' | 'preview' | null>();
-  const [attempt, setAttempt] = useState(0);
-  const [help, setHelp] = useState(false);
-  useEffect(() => {
-    if (androidClient) return;
-    const controller = new AbortController();
-    fetch(new URL('android-download.json', document.baseURI), { cache: 'no-store', signal: controller.signal })
-      .then(res => res.ok ? res.json() : null)
-      .then(meta => {
-        if (controller.signal.aborted) return;
-        setChannel(meta?.file === APK_FILE ? (meta.channel === 'preview' ? 'preview' : 'release') : null);
-      })
-      .catch(() => { if (!controller.signal.aborted) setChannel(null); });
-    return () => controller.abort();
-  }, [attempt]);
-
+  const [started, setStarted] = useState(false);
   if (androidClient) return null;
-  return <>
-    {channel ? (
-      <a href={new URL(APK_FILE, document.baseURI).href} download={APK_FILE}
-        className={apkButtonClass} onClick={() => setHelp(channel === 'preview')}>
-        <Download className="w-3.5 h-3.5" /> Descargar APK Android{channel === 'preview' ? ' (prueba)' : ''}
-      </a>
-    ) : (
-      <button type="button" className={apkButtonClass} onClick={() => {
-        setHelp(true);
-        if (channel === null) {
-          setChannel(undefined);
-          setAttempt(value => value + 1);
-        }
-      }}>
-        <Download className="w-3.5 h-3.5" /> Descargar APK Android
-      </button>
-    )}
-    {help && <div className="fixed z-50 top-16 right-4 max-w-xs p-4 rounded-lg bg-slate-950 border border-amber-500 text-sm text-amber-100">
-      <p role="status">{channel === 'preview'
-        ? 'Este APK de prueba contiene el juego completo. Antes de reinstalar una nueva compilación, exporta tu partida.'
-        : channel === 'release'
-          ? 'El instalador está disponible. Pulsa Descargar APK Android.'
-          : channel === undefined
-            ? 'Comprobando si el instalador de Android está disponible…'
-            : 'No se pudo encontrar el instalador. Comprueba tu conexión y vuelve a pulsar Descargar APK Android.'}</p>
-      <button type="button" className="block mt-3 underline" onClick={() => setHelp(false)}>Cerrar</button>
-    </div>}
-  </>;
+  return <><a href={new URL(APK_FILE, document.baseURI).href} download={APK_FILE}
+      className={apkButtonClass} onClick={() => setStarted(true)}>
+      <Download className="w-3.5 h-3.5" /> Descargar APK
+    </a>{started && <span role="status" className="text-xs text-amber-200">Descarga solicitada · revisa las descargas del navegador.</span>}</>;
 };
 
 export const PWAInstallButton: React.FC = () => {

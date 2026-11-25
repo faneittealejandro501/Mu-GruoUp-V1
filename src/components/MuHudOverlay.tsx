@@ -15,7 +15,7 @@ import {
   Settings,
   Shield,
   SlidersHorizontal,
-  Smartphone,
+
   Sword,
   Swords,
   User,
@@ -96,7 +96,7 @@ interface MuHudOverlayProps {
   onOpenStats: () => void;
   onOpenSync: () => void;
   onOpenOracle: () => void;
-  onOpenApk: () => void;
+  updateState: string;
   onOpenSettings: () => void;
   onUpdateButtonLayouts: (next: Record<HudButtonId, ButtonLayoutItem>) => void;
   onExitEditMode: () => void;
@@ -150,7 +150,7 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
   onOpenStats,
   onOpenSync,
   onOpenOracle,
-  onOpenApk,
+  updateState,
   onOpenSettings,
   onUpdateButtonLayouts,
   onExitEditMode,
@@ -412,18 +412,11 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
               <Bot className="w-3.5 h-3.5" />
               Oráculo
             </button>
-            <button
-              onClick={onOpenApk}
-              className="min-h-[34px] px-2.5 rounded-lg bg-[#0e1420]/92 border border-slate-700 hover:border-amber-500/60 text-amber-200 text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer"
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-              APK / Sync
-              {syncStatus.isOnline ? (
-                <Cloud className="w-3 h-3 text-emerald-400 ml-0.5" />
-              ) : (
-                <CloudOff className="w-3 h-3 text-amber-400 ml-0.5" />
-              )}
-            </button>
+            <span role="status" aria-label={updateState || (syncStatus.isOnline ? 'Conectado' : 'Sin conexión')}
+              title={updateState || syncStatus.lastMessage || undefined} className="text-amber-200">
+              {syncStatus.isOnline ? <Cloud className={updateState ? 'w-5 h-5 animate-pulse' : 'w-5 h-5'} /> : <CloudOff className="w-5 h-5" />}
+              {updateState && <small>{updateState === 'Lista' ? '✓' : '↓'}</small>}
+            </span>
           </div>
 
           {activeEffects.length > 0 && (

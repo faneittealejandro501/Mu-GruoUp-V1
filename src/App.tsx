@@ -181,7 +181,7 @@ export default function App() {
     x: -200,
     z: -255,
     inSafeCity: true,
-    totalMonsters: 40000,
+    totalMonsters: 0,
     nearbyMonsters: 0,
     mapName: 'Flaris',
     areaKm2: 9.44,
@@ -222,6 +222,7 @@ export default function App() {
   const roomRef = useRef<RoomState | null>(null);
   const settingsRef = useRef<GameSettings>(INITIAL_SETTINGS);
   const screenStageRef = useRef(screenStage);
+  const [updateState,setUpdateState] = useState('');
   useEffect(() => watchWebUpdates(async () => {
     if (worldLoadRef.current) return false;
     const c = charRef.current;
@@ -232,7 +233,7 @@ export default function App() {
       });
     });
     return !worldLoadRef.current;
-  }), []);
+  },setUpdateState), []);
   useEffect(() => {
     const mount = canvasMountRef.current;
     if (!mount) return;
@@ -1231,7 +1232,13 @@ export default function App() {
         return { ok: false, error: error instanceof Error ? error.message : 'No se pudo abrir ADMIN.' };
       }
     } else {
-      const res = await loginAccount(username, password);
+      let res = await loginAccount(username, password);
+      if (!res.ok && navigator.onLine) {
+        try {
+          await cloudSyncManager.restoreLogin(username,password);
+          res = await loginAccount(username,password);
+        } catch (e) { return {ok:false, error:e instanceof Error ? e.message : 'No se pudo abrir la cuenta.'}; }
+      }
       if (!res.ok) return { ok: false, error: res.error };
       account = res.account;
       try {
@@ -1263,6 +1270,7 @@ export default function App() {
     secretA2: string;
   }) => {
     if (input.username.trim().toLowerCase() === ADMIN_USERNAME) return { ok: false, error: 'Ese ID está reservado.' };
+    if (await cloudSyncManager.nameTaken(input.username)) return {ok:false,error:'Ese ID ya está registrado. Entra con tu contraseña.'};
     const res = await registerAccount(input);
     if (!res.ok) return { ok: false, error: res.error };
     setAccounts(await listAccounts());
@@ -1860,7 +1868,7 @@ export default function App() {
             onOpenStats={() => setActiveDrawer('stats')}
             onOpenSync={() => setActiveDrawer('sync')}
             onOpenOracle={() => setActiveDrawer('oracle')}
-            onOpenApk={() => setActiveDrawer('apk')}
+            updateState={updateState}
             onOpenSettings={() => setActiveDrawer('settings')}
             onUpdateButtonLayouts={handleUpdateButtonLayouts}
             onExitEditMode={() => setEditMode(false)}
@@ -1875,7 +1883,7 @@ export default function App() {
               Juego en Pausa
             </h2>
             <p className="text-xs text-slate-400 text-center">
-              Tu progreso, botones y equipamiento están guardados en este dispositivo. Puedes activar una copia privada en Web / APKweb.
+              Tu progreso, botones y equipamiento están guardados en este dispositivo. Con conexión al servidor, tu cuenta se sincroniza automáticamente.
             </p>
             <button
               onClick={() => setScreenStage('playing')}

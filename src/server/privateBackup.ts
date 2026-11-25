@@ -9,14 +9,14 @@ type Stored = { revision: string; iv: string; data: string };
 
 export function mountPrivateBackup(app: Express, directory?: string, browserOrigins = '') {
   if (!directory) {
-    app.all(BACKUP_ROUTE, (_req, res) => { res.status(503).json({ error: 'El servidor no tiene respaldo privado habilitado.' }); });
+    app.all([BACKUP_ROUTE, '/api/account-link/:name'], (_req, res) => { res.status(503).json({ error: 'El servidor no tiene respaldo privado habilitado.' }); });
     return;
   }
   const root = resolve(directory);
   mkdirSync(root, { recursive: true, mode: 0o700 });
   const allowedOrigins = new Set(browserOrigins.split(',').map(origin => origin.trim()).filter(Boolean));
   const attempts = new Map<string, { at: number; count: number }>();
-  app.all(BACKUP_ROUTE, (req, res) => {
+  app.all([BACKUP_ROUTE, '/api/account-link/:name'], (req, res) => {
     const origin = req.get('origin');
     if (origin) {
       let sameHost = false;
@@ -31,11 +31,11 @@ export function mountPrivateBackup(app: Express, directory?: string, browserOrig
     res.set('Cache-Control', 'no-store');
     if (req.method === 'OPTIONS') {
       res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-      res.set('Access-Control-Allow-Methods', 'GET, PUT, OPTIONS');
+      res.set('Access-Control-Allow-Methods', 'GET, HEAD, PUT, OPTIONS');
       res.sendStatus(204);
       return;
     }
-    if (req.method !== 'GET' && req.method !== 'PUT') {
+    if (req.method !== 'GET' && req.method !== 'PUT' && !(req.method === 'HEAD' && req.path.startsWith('/api/account-link/'))) {
       res.sendStatus(405); return;
     }
     const now = Date.now(), ip = req.ip || 'unknown';
@@ -49,6 +49,38 @@ export function mountPrivateBackup(app: Express, directory?: string, browserOrig
     else { res.sendStatus(429); return; }
 
     const token = /^Bearer ([a-f0-9]{64})$/.exec(req.get('authorization') || '')?.[1];
+
+    if (req.path.startsWith('/api/account-link/')) {
+      const name = req.params.name;
+      if (!/^[a-f0-9]{64}$/.test(name)) { res.sendStatus(400); return; }
+      const file = join(root, 'login-' + name + '.json');
+      const hash = (value: string) => createHash('sha256').update(value).digest('hex');
+      try {
+        let saved;
+        try { saved = JSON.parse(readFileSync(file,'utf8')); }
+        catch (e) { if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e; }
+        if (req.method === 'HEAD') { res.sendStatus(saved ? 200 : 404); return; }
+        if (!token) { res.sendStatus(401); return; }
+        if (req.method === 'GET') {
+          if (!saved || saved.proof !== hash(token)) { res.sendStatus(401); return; }
+          res.json({iv:saved.iv, cipher:saved.cipher}); return;
+        }
+        const {proof, iv, cipher, version} = req.body || {};
+        if (typeof proof !== 'string' || !/^[a-f0-9]{64}$/.test(proof) ||
+            typeof iv !== 'string' || !/^[a-f0-9]{24}$/.test(iv) ||
+            typeof cipher !== 'string' || !/^[a-f0-9]{160}$/.test(cipher) ||
+            !Number.isSafeInteger(version)) { res.sendStatus(400); return; }
+        if (saved && saved.owner !== hash(token)) { res.sendStatus(409); return; }
+        if (!saved && readdirSync(root).filter(n => n.startsWith('login-')).length >= 1000) { res.sendStatus(507); return; }
+        if (!saved || version >= saved.version) {
+          const tmp = file + '.' + randomUUID();
+          writeFileSync(tmp, JSON.stringify({proof:hash(proof),owner:hash(token),iv,cipher,version}), {mode:0o600,flag:'wx'});
+          renameSync(tmp,file);
+        }
+        res.sendStatus(204);
+      } catch { res.sendStatus(500); }
+      return;
+    }
     if (!token) { res.sendStatus(401); return; }
     const file = join(root, createHash('sha256').update(token).digest('hex') + '.json');
     try {

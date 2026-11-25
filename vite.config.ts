@@ -25,6 +25,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['apple-touch-icon.png', 'icon.svg', 'ota-manifest.json'],
       workbox: {
+        navigateFallbackDenylist: [/\.apk(?:\?|$)/i, /\/api\//],
         maximumFileSizeToCacheInBytes: 25 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,ico,png,webp,svg,json,wav,ogg,glb,f32,u8,wasm}'],
         manifestTransforms: [async entries => {

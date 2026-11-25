@@ -85,7 +85,8 @@ fi
 chmod 0644 "$staging/signed.apk"
 mv "$staging/signed.apk" "$out"
 if [[ "$out" == dist/MuGro-up-Android.apk ]]; then
-  printf '{"file":"MuGro-up-Android.apk","version":"%s","channel":"%s"}\n' "$version" "$channel" > dist/android-download.json
+  digest=$(sha256sum "$out" | cut -d" " -f1)
+  printf '{"sha256":"%s","webFormat":1,"file":"MuGro-up-Android.apk","version":"%s","channel":"%s"}\n' "$digest" "$version" "$channel" > dist/android-download.json
   chmod 0644 dist/android-download.json
 fi
 printf 'APK listo: %s\n' "$out"

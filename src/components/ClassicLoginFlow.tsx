@@ -564,7 +564,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
                     disabled={busy}
                     className="w-full min-h-[46px] rounded-lg bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-sm cursor-pointer"
                   >
-                    Crear Cuenta en IndexedDB y Entrar
+                    Crear cuenta y entrar
                   </button>
                 </form>
               )}
