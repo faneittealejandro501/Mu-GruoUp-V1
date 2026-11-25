@@ -29,6 +29,11 @@ interface PWAInstallButtonProps {
   onOpenApkCenter?: () => void;
 }
 
+export function isStandaloneApp(): boolean {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+}
+
 export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ onOpenApkCenter }) => {
   const deferredPrompt = useSyncExternalStore(subscribe, () => pendingPrompt);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -37,23 +42,29 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ onOpenApkCen
   const [offlineReady, setOfflineReady] = useState(false);
   useEffect(() => {
     let mounted = true;
-    const verify = () => { void offlineInstallReady().then(ok => { if (mounted) setOfflineReady(ok); }).catch(() => {}); };
-    verify();
+    let verified = false;
+    let checking = false;
+    const verify = async () => {
+      if (!mounted || verified || checking) return;
+      checking = true;
+      try {
+        const ok = await offlineInstallReady();
+        if (mounted) { verified = ok; setOfflineReady(ok); }
+      } catch { /* retry while the client is downloading */ }
+      finally { checking = false; }
+    };
+    const onReplacement = () => { verified = false; setOfflineReady(false); void verify(); };
+    void verify();
     if ('serviceWorker' in navigator) {
-      void navigator.serviceWorker.ready.then(() => { if (mounted) verify(); });
-      navigator.serviceWorker.addEventListener('controllerchange', verify);
+      void navigator.serviceWorker.ready.then(verify);
+      navigator.serviceWorker.addEventListener('controllerchange', onReplacement);
     }
-    return () => { mounted = false; navigator.serviceWorker?.removeEventListener('controllerchange', verify); };
+    const retry = window.setInterval(verify, 3000);
+    return () => { mounted = false; clearInterval(retry); navigator.serviceWorker?.removeEventListener('controllerchange', onReplacement); };
   }, []);
 
   useEffect(() => {
-    const checkStandalone = () => {
-      const standalone =
-        window.matchMedia?.('(display-mode: standalone)').matches ||
-        (navigator as Navigator & { standalone?: boolean }).standalone === true;
-      setIsInstalled(Boolean(standalone));
-    };
-    checkStandalone();
+    setIsInstalled(isStandaloneApp());
 
     const onAppInstalled = () => setIsInstalled(true);
     window.addEventListener('appinstalled', onAppInstalled);

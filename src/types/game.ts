@@ -193,6 +193,7 @@ export interface MonsterSpawnDef {
   isBoss?: boolean;
   powers?: MonsterPower[];
   roamRadius?: number;
+  moveSpeed?: number;
   respawnSeconds?: number;
   drops?: string[];
 }

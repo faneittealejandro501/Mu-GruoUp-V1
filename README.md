@@ -15,7 +15,19 @@ bun install --frozen-lockfile
 bun run dev
 ```
 
-Abre `http://localhost:3000/`. La cuenta de demostración local es `lorencia` / `123456`. Crea tu propia cuenta para guardar una partida personal.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:00b33e463a30285f0710d68d68a238beb8a801b8bcdd600e06af8b90aee6a3f2 -->
+
+Abre `http://localhost:3000/`. Crea una cuenta para guardar una partida en el dispositivo. La web no muestra la lista de cuentas locales; la APKweb instalada puede recordar el último ID sin guardar la contraseña en el formulario.
+
+### Administración en el juego
+
+Configura en el servidor Node `MU_ADMIN_PASSWORD` con una contraseña nueva de al menos 16 caracteres, guardada como secreto del entorno. Abre el acceso del juego con el ID **Adonyhdp** y ese secreto. La cuenta de administración se recupera rotando el secreto del servidor. El panel permite editar estadísticas y grupos de monstruos, posiciones y tiendas de NPC, e invasiones. Al publicar, los clientes conectados consultan los cambios cada 15 segundos; el mapa activo retira monstruos, NPC y botín del suelo por dos segundos y vuelve a cargarlos. Los grupos manuales se añaden a las patrullas distribuidas por el mapa. Los inventarios, personajes y registros de jefes derrotados se conservan.
+
+En producción, sirve Node por HTTPS y fija `MU_WORLD_FILE` a un archivo de un volumen persistente. Por defecto guarda en `ADMIN/live-world.local.json`. Si la APKweb se publica en Pages, fija `VITE_WORLD_SERVER_URL` como variable de Actions para la compilación y agrega el origen de Pages (sin la ruta) a `MU_WORLD_ORIGINS` en Node. Para una edición que deba viajar en Git, copia la configuración publicada a `ADMIN/live-world.json` y crea una versión. El panel publica al servidor y no necesita credenciales de GitHub. La APKweb usa la última configuración recibida mientras está offline.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ```sh
 bun run typecheck:app
@@ -63,7 +75,13 @@ Los grupos no aparecen dentro de una capital. En `drops` puedes usar también id
 
 <!-- coderabbit-ai-generated-section:v1:e1d6e24c87f4b275534c371071376868cab3b523b572817aabc5998c831a3e99 -->
 
-ADMIN se edita únicamente en el repositorio. Publica una nueva compilación para distribuir los cambios. En el juego, Hellpe activa el ataque automático y Combo elige la secuencia. En APKweb, espera a que finalice la descarga antes de desconectarte.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:66a2f574b6d506abeb0095c31f15fcc6653c50ea9b6a75c9346da2f0288b25ca -->
+
+Las reglas base de ADMIN viajan en cada compilación. El panel publica cambios de monstruos, NPC e invasiones cuando hay un servidor configurado. En el juego, Hellpe activa el ataque automático y Combo elige la secuencia. En APKweb, espera a que se complete la descarga antes de desconectarte.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 Cada región incluye 4.000 campamentos de diez monstruos y los grupos adicionales configurados en ADMIN. Las posiciones se generan por mapa y solo se cargan modelos cerca del jugador. En `world-rules.json`, `stripManmadeStructures` permite ocultar construcciones si se prefiere.
 

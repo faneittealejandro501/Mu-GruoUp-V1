@@ -15,7 +15,7 @@ export default defineConfig({
     {
       name: 'bundle-admin-config',
       generateBundle() {
-        for (const name of ['world-rules', 'monsters', 'items', 'item-options', 'npcs', 'classes-skills']) {
+        for (const name of ['world-rules', 'monsters', 'items', 'item-options', 'npcs', 'classes-skills', 'live-world']) {
           const fileName = `ADMIN/${name}.json`;
           this.emitFile({ type: 'asset', fileName, source: readFileSync(new URL(fileName, import.meta.url)) });
         }
