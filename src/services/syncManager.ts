@@ -1,3 +1,4 @@
+import { androidClient, AndroidRooms } from './androidRooms';
 import type {
   AsyncDuelChallenge,
   AsyncDuelRecord,
@@ -41,16 +42,27 @@ export interface LocalSyncCallbacks {
   onDuelCompleted?: (payload: { record: AsyncDuelRecord }) => void;
   onRoomEnded?: (message: string) => void;
   onError?: (message: string) => void;
+  onStatus?: (message: string) => void;
 }
 
 export class LocalSyncManager {
   public readonly peerId: string;
   private callbacks: LocalSyncCallbacks;
+  private android: AndroidRooms | undefined;
   private ws: WebSocket | null = null;
   private connectPromise: Promise<boolean> | null = null;
 
   constructor(callbacks: LocalSyncCallbacks) {
     this.callbacks = callbacks;
+    if (androidClient) {
+      this.android = new AndroidRooms({
+        connected: connected => callbacks.onConnectionChange?.(connected),
+        message: raw => this.handleMessage(raw),
+        ended: message => callbacks.onRoomEnded?.(message),
+        status: message => callbacks.onStatus?.(message),
+        error: message => callbacks.onError?.(message),
+      });
+    }
     this.peerId = `peer-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
   }
 
@@ -133,6 +145,7 @@ export class LocalSyncManager {
       } else if (msg.type === 'duel:completed' && msg.record) {
         this.callbacks.onDuelCompleted?.({ record: msg.record as AsyncDuelRecord });
       } else if (msg.type === 'room:ended') {
+        this.android?.close();
         this.callbacks.onRoomEnded?.(String(msg.message || 'Sala finalizada.'));
       } else if (msg.type === 'room:error') {
         this.callbacks.onError?.(String(msg.message || 'Error en la sala local.'));
@@ -143,45 +156,21 @@ export class LocalSyncManager {
   }
 
   private send(payload: Record<string, unknown>): void {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+    if (this.android) {
+      this.android.send(JSON.stringify(payload));
+    } else if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(payload));
     }
   }
 
-  public async pairBluetoothHardware(): Promise<{ ok: boolean; deviceName?: string; message: string }> {
-    const nav = navigator as Navigator & {
-      bluetooth?: {
-        requestDevice: (opts: { acceptAllDevices?: boolean; optionalServices?: string[] }) => Promise<{ name?: string }>;
-      };
-    };
-    if (!nav.bluetooth) {
-      return {
-        ok: false,
-        message: 'Web Bluetooth no está disponible en este navegador. Usa Salas Wi-Fi o Tokens MUDUEL1 para duelos.',
-      };
-    }
-    try {
-      const device = await nav.bluetooth.requestDevice({
-        acceptAllDevices: true,
-        optionalServices: ['generic_access'],
-      });
-      const deviceName = device.name || 'Dispositivo MU Bluetooth';
-      return {
-        ok: true,
-        deviceName,
-        message: `Vinculado por Bluetooth GATT con ${deviceName}. Las partidas y los intercambios se conectan por Wi-Fi.`,
-      };
-    } catch (err) {
-      return {
-        ok: false,
-        message: err instanceof Error ? `Emparejamiento cancelado (${err.message}).` : 'Emparejamiento cancelado.',
-      };
-    }
-  }
-
   public async createRoom(peer: RoomPeer, eventType: EventType, transport: TransportMode): Promise<void> {
+    const message = { type: 'room:create', peer: { ...peer, peerId: this.peerId }, eventType, transport };
+    if (this.android) {
+      this.android.open(transport, JSON.stringify(message));
+      return;
+    }
     if (transport !== 'wifi') {
-      this.callbacks.onError?.('Usa Wi-Fi para las salas en tiempo real. Bluetooth no transporta la partida web.');
+      this.callbacks.onError?.('Para jugar por Bluetooth, descarga el APK de Android.');
       return;
     }
     const ok = await this.ensureConnected();
@@ -189,12 +178,18 @@ export class LocalSyncManager {
       this.callbacks.onError?.('No hay servidor WebSocket local activo (/ws). Usa tokens MUDUEL1 para jugar offline.');
       return;
     }
-    this.send({ type: 'room:create', peer: { ...peer, peerId: this.peerId }, eventType, transport });
+    this.send(message);
+    this.callbacks.onStatus?.('Cuando aparezca el código, compártelo con los invitados.');
   }
 
-  public async joinRoom(code: string, peer: RoomPeer, transport: TransportMode): Promise<void> {
+  public async joinRoom(code: string, peer: RoomPeer, transport: TransportMode, address = ''): Promise<void> {
+    const message = { type: 'room:join', code: code.trim().toUpperCase(), peer: { ...peer, peerId: this.peerId }, transport };
+    if (this.android) {
+      this.android.open(transport, JSON.stringify(message), address.trim());
+      return;
+    }
     if (transport !== 'wifi') {
-      this.callbacks.onError?.('Usa Wi-Fi para las salas en tiempo real. Bluetooth no transporta la partida web.');
+      this.callbacks.onError?.('Para jugar por Bluetooth, descarga el APK de Android.');
       return;
     }
     const ok = await this.ensureConnected();
@@ -202,7 +197,7 @@ export class LocalSyncManager {
       this.callbacks.onError?.('No se pudo conectar al servidor WebSocket local.');
       return;
     }
-    this.send({ type: 'room:join', code: code.trim().toUpperCase(), peer: { ...peer, peerId: this.peerId }, transport });
+    this.send(message);
   }
 
   public sendPeerUpdate(patch: Partial<RoomPeer>): void {
@@ -234,10 +229,14 @@ export class LocalSyncManager {
   }
 
   public endRoom(): void {
-    this.send({ type: 'room:end' });
+    if (this.android) {
+      this.android.close();
+      this.callbacks.onRoomEnded?.('Saliste de la sala local.');
+    } else this.send({ type: 'room:end' });
   }
 
   public disconnect(): void {
+    this.android?.close();
     if (this.ws) {
       this.ws.close();
       this.ws = null;

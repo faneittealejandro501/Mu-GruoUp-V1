@@ -1,3 +1,4 @@
+import { androidClient } from '../services/androidRooms';
 import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import { Download, Smartphone, WifiOff } from 'lucide-react';
 
@@ -30,9 +31,27 @@ interface PWAInstallButtonProps {
 }
 
 export function isStandaloneApp(): boolean {
-  return window.matchMedia('(display-mode: standalone)').matches ||
+  return !!androidClient || window.matchMedia('(display-mode: standalone)').matches ||
     (navigator as Navigator & { standalone?: boolean }).standalone === true;
 }
+
+export const AndroidDownloadLink: React.FC = () => {
+  const [available, setAvailable] = useState(false);
+  useEffect(() => {
+    if (androidClient) return;
+    const controller = new AbortController();
+    fetch(new URL('android-download.json', document.baseURI), { cache: 'no-store', signal: controller.signal })
+      .then(res => res.ok ? res.json() : null)
+      .then(meta => setAvailable(meta?.file === 'MuGro-up-Android.apk'))
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
+  if (!available || androidClient) return null;
+  return <a href={new URL('MuGro-up-Android.apk', document.baseURI).href} download
+    className="min-h-[38px] px-3 rounded-lg bg-amber-500 text-slate-950 text-xs font-bold inline-flex items-center gap-1.5 whitespace-nowrap">
+    <Download className="w-3.5 h-3.5" /> Descargar APK Android
+  </a>;
+};
 
 export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ onOpenApkCenter }) => {
   const deferredPrompt = useSyncExternalStore(subscribe, () => pendingPrompt);
@@ -83,7 +102,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ onOpenApkCen
     setHelp(true);
   };
 
-  if (isInstalled) {
+  if (androidClient || isInstalled) {
     return null;
   }
 
@@ -95,9 +114,9 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ onOpenApkCen
       className="min-h-[38px] px-3 rounded-lg bg-[#162033] hover:bg-slate-700 border border-amber-500/50 text-amber-200 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
     >
       {deferredPrompt ? <Download className="w-3.5 h-3.5 text-emerald-400" /> : <Smartphone className="w-3.5 h-3.5 text-amber-400" />}
-      Descargar APK-WEB
+      Instalar PWA
     </button>
-    {help && <div role="dialog" aria-label="Descargar APK-WEB" className="fixed z-50 top-16 right-4 max-w-xs p-4 rounded-lg bg-slate-950 border border-amber-500 text-sm text-amber-100">
+    {help && <div role="dialog" aria-label="Instalar PWA" className="fixed z-50 top-16 right-4 max-w-xs p-4 rounded-lg bg-slate-950 border border-amber-500 text-sm text-amber-100">
       {offlineReady ? 'Cliente completo. Para instalarlo, abre el menú del navegador y elige Instalar aplicación o Añadir a inicio.' : 'Mantén esta página abierta con internet mientras se guarda el cliente completo para jugar sin conexión.'}
       <button className="block mt-3 underline" onClick={()=>setHelp(false)}>Cerrar</button></div>}</>
   );
