@@ -83,7 +83,7 @@ test('another client opens the wrapped backup by normalized login; collisions ca
 test('online recovery accepts either single answer without exposing the sealed recovery records', async () => {
   const {publishAccountLink,lookupAccountLink,lookupRecoveryLink,lookupRecoveryQuestions} = await import('../src/services/accountLink.ts');
   const root = await mkdtemp(join(tmpdir(),'mu-recovery-'));
-  const app = express(); app.use(express.json()); mountPrivateBackup(app,root,'https://apk.mugroup.invalid','ab'.repeat(32));
+  const app = express(); app.use(express.json()); mountPrivateBackup(app,root,'https://game.example','ab'.repeat(32));
   const server = app.listen(0,'127.0.0.1'); await once(server,'listening');
   const endpoint = new URL('http://127.0.0.1:'+ (server.address() as AddressInfo).port+'/api/private-backup');
   try {

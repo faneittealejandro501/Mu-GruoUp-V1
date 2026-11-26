@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArcRotateCamera, Color4, Engine, Mesh, HemisphericLight, Scene, SceneLoader, Vector3 } from '@babylonjs/core';
+import { ArcRotateCamera, Color3, Color4, DirectionalLight, Engine, Mesh, HemisphericLight, Scene, SceneLoader, Vector3 } from '@babylonjs/core';
 import '@babylonjs/loaders';
 import { buildArtisanWeapon } from '../game/content/ArtisanWeapon';
 import { applyEnhanceGlow, splitTorsoAndPantsMesh } from '../game/content/EquipmentAppearance';
@@ -16,7 +16,11 @@ export function ShopModel({item,file}:{item:ShopItemDef;file?:string}) {
     const scene=new Scene(engine);
     scene.clearColor=new Color4(.04,.06,.09,1);
     const camera=new ArcRotateCamera('preview',-Math.PI/2,1.25,3,Vector3.Zero(),scene);
-    new HemisphericLight('shop-light',new Vector3(.2,1,-.6),scene).intensity=1.4;
+    // FlyffWeb client/invpreview.ts (0a4780dd): white ambient and directional light.
+    const fill = new HemisphericLight('shop-fill', Vector3.Up(), scene);
+    fill.groundColor = Color3.White();
+    fill.intensity = 1.6;
+    new DirectionalLight('shop-key', new Vector3(2,-4,5).normalize(), scene).intensity = 1.6;
     const setup=async()=>{
       if (file) {
         const path='./mugroup/'+file, i=path.lastIndexOf('/')+1;
@@ -40,6 +44,7 @@ export function ShopModel({item,file}:{item:ShopItemDef;file?:string}) {
         buildArtisanWeapon(scene,spec);
       }
       for (const mesh of scene.meshes) if(mesh.isEnabled() && mesh.getTotalVertices()) applyEnhanceGlow(mesh,item.enhanceLevel,artisanArmor(item.setName)?.color);
+      if (!scene.meshes.some(mesh => mesh.isEnabled() && mesh.getTotalVertices())) throw Error('Modelo vacío');
       const {min,max}=scene.getWorldExtends(mesh=>mesh.isEnabled() && mesh.getTotalVertices()>0);
       const radius=Math.max(.01,Vector3.Distance(min,max)*1.65);
       camera.setTarget(Vector3.Center(min,max)); camera.radius=radius;

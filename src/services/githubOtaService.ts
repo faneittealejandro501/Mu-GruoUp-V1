@@ -1,5 +1,4 @@
 import { isPublishedClient, parseServerOrigin, sharedServerOrigin } from './serverConnection';
-import { androidClient } from './androidRooms';
 import { offlineInstallReady } from './offlineInstall';
 import manifest from '../../public/ota-manifest.json' with { type: 'json' };
 
@@ -141,28 +140,6 @@ export async function applyWebOtaUpdate(): Promise<boolean> {
 }
 
 export function watchWebUpdates(saveLocalProgress: () => Promise<boolean>, status: (value:string) => void): () => void {
-  if (androidClient) {
-    let stopped = false, busy = false, next = 0;
-    const tick = async () => {
-      if (stopped || busy || document.hidden) return;
-      const state = androidClient?.updateState?.();
-      status(state === 'ready' ? 'Lista' : state === 'downloading' ? 'Descargando' : '');
-      if (state === 'ready') {
-        busy = true;
-        try { if (await saveLocalProgress() && !stopped) androidClient?.applyClient?.(); }
-        finally { busy = false; }
-      } else if (navigator.onLine && Date.now() >= next) {
-        next = Date.now() + 60000;
-        androidClient?.checkClient?.();
-      }
-    };
-    const run = () => { void tick().catch(() => {}); };
-    const online = () => { next = 0; run(); };
-    const timer = window.setInterval(run,2000);
-    window.addEventListener('online',online);
-    run();
-    return () => { stopped = true; clearInterval(timer); window.removeEventListener('online',online); };
-  }
   if (!('serviceWorker' in navigator)) return () => {};
   const workers = navigator.serviceWorker;
   let stopped = false;

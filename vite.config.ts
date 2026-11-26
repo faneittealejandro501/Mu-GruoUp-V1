@@ -1,10 +1,14 @@
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { defineConfig } from 'vite';
+import { build as bundleWorker } from 'esbuild';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { terrainTextures } from './tools/world/terrain-textures.mjs';
 import { VitePWA } from 'vite-plugin-pwa';
+
+// Use the same public build configuration in the window and background worker.
+let workerEnv: Record<string, string> = {};
 
 export default defineConfig({
   base: './',
@@ -21,10 +25,25 @@ export default defineConfig({
         }
       },
     },
+    {
+      name: 'bundle-account-sync',
+      apply: 'build',
+      configResolved(config) { workerEnv = config.env; },
+      async generateBundle() {
+        const result = await bundleWorker({
+          entryPoints: ['src/services/accountSyncWorker.ts'], bundle: true, format: 'iife',
+          target: 'es2022', minify: true, write: false,
+          define: { 'import.meta.env.VITE_BACKUP_URL': JSON.stringify(workerEnv.VITE_BACKUP_URL || ''),
+            'import.meta.env.VITE_WORLD_SERVER_URL': JSON.stringify(workerEnv.VITE_WORLD_SERVER_URL || '') },
+        });
+        this.emitFile({type:'asset',fileName:'account-sync.js',source:result.outputFiles[0].contents});
+      },
+    },
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['apple-touch-icon.png', 'icon.svg', 'ota-manifest.json'],
       workbox: {
+        importScripts: ['./account-sync.js'],
         navigateFallbackDenylist: [/\.apk(?:\?|$)/i, /\/api\//],
         maximumFileSizeToCacheInBytes: 25 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,ico,png,webp,svg,json,wav,ogg,glb,f32,u8,wasm}'],
@@ -34,7 +53,7 @@ export default defineConfig({
           writeFileSync(new URL('./dist/offline-files.json', import.meta.url), index);
           return { manifest: [...urls, { url: 'offline-files.json', revision: createHash('sha256').update(index).digest('hex'), size: Buffer.byteLength(index) }], warnings: [] };
         }],
-        globIgnores: ['assets/aistudio/**', 'android-download.json'],
+        globIgnores: ['assets/aistudio/**'],
         runtimeCaching: [
           {
             urlPattern: /\/mugroup\/.*/i,
@@ -61,8 +80,8 @@ export default defineConfig({
         ],
       },
       manifest: {
-        name: "MuGro-up' · Offline & Sync",
-        short_name: "MuGro-up'",
+        name: "MuGro-up' · APK-WEB",
+        short_name: "APK-WEB",
         description: "Juego Web3D MuGro-up' Offline-First con Babylon.js, Dexie IndexedDB y salas en red local.",
         theme_color: '#0c1018',
         background_color: '#0c1018',

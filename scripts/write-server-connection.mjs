@@ -21,23 +21,22 @@ if (url && (url.protocol !== 'https:' || url.username || url.password || url.pat
 }
 if (publishing && !url) console.warn('Edición local: no hay servidor configurado para recuperar cuentas entre dispositivos.');
 if (publishing && url) {
-  for (const origin of [new URL(pages).origin,'https://apk.mugroup.invalid']) {
-    const options = {headers:{Origin:origin}, redirect:'error', signal:AbortSignal.timeout(15000)};
-    const status = await fetch(new URL('/api/account-service',url),options);
-    const info = status.ok ? await status.json() : null;
-    if (status.headers.get('access-control-allow-origin') !== origin ||
-        info?.service !== 'mugroup-accounts' || info.recovery !== true)
-      throw Error('Servidor de cuentas o recuperación no disponible desde '+origin);
-    for (const path of ['/api/private-backup','/api/account-link/'+'0'.repeat(64)]) {
-      const preflight = await fetch(new URL(path,url),{...options,method:'OPTIONS',headers:{
-        Origin:origin,'Access-Control-Request-Method':'PUT','Access-Control-Request-Headers':'authorization,content-type',
-      }});
-      const permits = key => (preflight.headers.get(key) || '').toLowerCase().split(',').map(x=>x.trim());
-      if (!preflight.ok || preflight.headers.get('access-control-allow-origin') !== origin ||
-          !permits('access-control-allow-methods').includes('put') ||
-          !['authorization','content-type'].every(h=>permits('access-control-allow-headers').includes(h)))
-        throw Error('El servidor no admite sincronización desde '+origin);
-    }
+  const origin = new URL(pages).origin;
+  const options = {headers:{Origin:origin}, redirect:'error', signal:AbortSignal.timeout(15000)};
+  const status = await fetch(new URL('/api/account-service',url),options);
+  const info = status.ok ? await status.json() : null;
+  if (status.headers.get('access-control-allow-origin') !== origin ||
+      info?.service !== 'mugroup-accounts' || info.recovery !== true)
+    throw Error('Servidor de cuentas o recuperación no disponible desde '+origin);
+  for (const path of ['/api/private-backup','/api/account-link/'+'0'.repeat(64)]) {
+    const preflight = await fetch(new URL(path,url),{...options,method:'OPTIONS',headers:{
+      Origin:origin,'Access-Control-Request-Method':'PUT','Access-Control-Request-Headers':'authorization,content-type',
+    }});
+    const permits = key => (preflight.headers.get(key) || '').toLowerCase().split(',').map(x=>x.trim());
+    if (!preflight.ok || preflight.headers.get('access-control-allow-origin') !== origin ||
+        !permits('access-control-allow-methods').includes('put') ||
+        !['authorization','content-type'].every(h=>permits('access-control-allow-headers').includes(h)))
+      throw Error('El servidor no admite sincronización desde '+origin);
   }
 }
 writeFileSync(process.argv[2] || 'dist/server-connection.json', JSON.stringify({ origin: url?.origin ?? '' }) + '\n');

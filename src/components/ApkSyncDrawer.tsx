@@ -1,6 +1,5 @@
 import { parseServerOrigin } from '../services/serverConnection';
 import { networkDeadline } from '../services/networkDeadline';
-import { androidClient } from '../services/androidRooms';
 import { offlineInstallReady } from '../services/offlineInstall';
 import { PrivateBackupPanel } from './PrivateBackupPanel';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -31,7 +30,7 @@ import {
   type GithubOtaStatus,
 } from '../services/githubOtaService';
 import type { SyncStatusInfo } from '../types/game';
-import { AndroidDownloadLink, PWAInstallButton } from './PWAInstallButton';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface ApkSyncDrawerProps {
   open: boolean;
@@ -125,10 +124,6 @@ export const ApkSyncDrawer: React.FC<ApkSyncDrawerProps> = ({
     setPreloadingCache(true);
     setNotice(null);
     try {
-      if (androidClient) {
-        setNotice('El APK ya incluye todo el cliente para jugar sin internet.');
-        return;
-      }
       if (!('serviceWorker' in navigator)) throw new Error('Este navegador no admite la instalación sin conexión.');
       const ready = await offlineInstallReady();
       if (!ready && navigator.onLine) await applyWebOtaUpdate();
@@ -161,10 +156,6 @@ export const ApkSyncDrawer: React.FC<ApkSyncDrawerProps> = ({
 
   const handleExportJson = async () => {
     const blob = await exportDatabaseFile();
-    if (androidClient) {
-      androidClient.exportBackup(await blob.text());
-      return;
-    }
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -192,10 +183,10 @@ export const ApkSyncDrawer: React.FC<ApkSyncDrawerProps> = ({
             <Smartphone className="w-5 h-5 text-amber-400" />
             <div>
               <h2 className="font-display text-lg font-bold text-amber-300">
-                MuGro-up&apos; · PWA, Web &amp; APKweb + IndexedDB
+                MuGro-up&apos; · Web y APK-WEB + IndexedDB
               </h2>
               <p className="text-xs text-slate-400">
-                Actualizaciones automáticas OTA desde GitHub Pages para Web/APKweb + respaldo offline Dexie.
+                Actualizaciones automáticas OTA desde GitHub Pages para Web/APK-WEB + respaldo offline Dexie.
               </p>
             </div>
           </div>
@@ -220,7 +211,7 @@ export const ApkSyncDrawer: React.FC<ApkSyncDrawerProps> = ({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
-                  <span>1. Web / PWA / APKweb Auto-Update (GitHub OTA)</span>
+                  <span>1. Web / APK-WEB Auto-Update (GitHub OTA)</span>
                   {otaStatus?.updateAvailable && (
                     <span className="px-2 py-0.5 rounded bg-amber-500 text-slate-950 text-[10px] font-bold">
                       Actualización lista
@@ -244,14 +235,14 @@ export const ApkSyncDrawer: React.FC<ApkSyncDrawerProps> = ({
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <button
-                  onClick={androidClient ? () => androidClient?.openDownload() : handleCheckAndApplyUpdate}
+                  onClick={handleCheckAndApplyUpdate}
                   disabled={checkingOta}
                   className="min-h-[38px] px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${checkingOta ? 'animate-spin' : ''}`} />
-                  {androidClient ? 'Buscar APK nuevo' : otaStatus?.updateAvailable ? 'Aplicar Actualización' : 'Buscar Actualizaciones'}
+                  {otaStatus?.updateAvailable ? 'Aplicar Actualización' : 'Buscar Actualizaciones'}
                 </button>
-                <AndroidDownloadLink />
+
                 <PWAInstallButton />
               </div>
             </div>
@@ -272,6 +263,7 @@ export const ApkSyncDrawer: React.FC<ApkSyncDrawerProps> = ({
                   <span className="text-slate-400">({syncStatus.lastMessage})</span>
                 )}
               </div>
+              {syncStatus.error && <p role="status" className="w-full text-xs text-amber-200">{syncStatus.error}</p>}
               <button
                 onClick={handleManualCloudSync}
                 disabled={syncingCloud || !syncStatus.isOnline}
@@ -283,17 +275,17 @@ export const ApkSyncDrawer: React.FC<ApkSyncDrawerProps> = ({
             </div>
           </div>
 
-          {/* 2. GitHub Repo + APKweb + Optional Cloud API Server Linking */}
+          {/* 2. GitHub Repo + APK-WEB + Optional Cloud API Server Linking */}
           <div className="p-4 rounded-xl bg-[#141a26] border border-slate-800 space-y-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2 text-sm font-semibold text-amber-300">
                 <FileArchive className="w-4 h-4" />
-                2. Vínculo GitHub Pages + APKweb Auto-Actualizable
+                2. Vínculo GitHub Pages + APK-WEB Auto-Actualizable
               </div>
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed">
-              Cada <code>git push</code> a tu repositorio actualiza GitHub Pages. Cuando abres la Web o el APKweb con internet, el Service Worker descarga la nueva compilación automáticamente sin borrar tu base IndexedDB.
+              Cada <code>git push</code> a tu repositorio actualiza GitHub Pages. Cuando abres la Web o el APK-WEB con internet, el Service Worker descarga la nueva compilación automáticamente sin borrar tu base IndexedDB.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -318,7 +310,7 @@ export const ApkSyncDrawer: React.FC<ApkSyncDrawerProps> = ({
 
               <div className="space-y-1.5">
                 <label className="block text-xs text-slate-400">
-                  Servidor Cloud Sync URL (Opcional si usas Backend):
+                  Servidor de cuentas y recuperación (dirección HTTPS):
                   <input
                     type="text"
                     value={cloudUrlInput}

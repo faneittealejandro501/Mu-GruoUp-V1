@@ -1,4 +1,3 @@
-import { androidClient, AndroidRooms } from './androidRooms';
 import type {
   AsyncDuelChallenge,
   AsyncDuelRecord,
@@ -48,21 +47,11 @@ export interface LocalSyncCallbacks {
 export class LocalSyncManager {
   public readonly peerId: string;
   private callbacks: LocalSyncCallbacks;
-  private android: AndroidRooms | undefined;
   private ws: WebSocket | null = null;
   private connectPromise: Promise<boolean> | null = null;
 
   constructor(callbacks: LocalSyncCallbacks) {
     this.callbacks = callbacks;
-    if (androidClient) {
-      this.android = new AndroidRooms({
-        connected: connected => callbacks.onConnectionChange?.(connected),
-        message: raw => this.handleMessage(raw),
-        ended: message => callbacks.onRoomEnded?.(message),
-        status: message => callbacks.onStatus?.(message),
-        error: message => callbacks.onError?.(message),
-      });
-    }
     this.peerId = `peer-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
   }
 
@@ -145,7 +134,6 @@ export class LocalSyncManager {
       } else if (msg.type === 'duel:completed' && msg.record) {
         this.callbacks.onDuelCompleted?.({ record: msg.record as AsyncDuelRecord });
       } else if (msg.type === 'room:ended') {
-        this.android?.close();
         this.callbacks.onRoomEnded?.(String(msg.message || 'Sala finalizada.'));
       } else if (msg.type === 'room:error') {
         this.callbacks.onError?.(String(msg.message || 'Error en la sala local.'));
@@ -156,21 +144,15 @@ export class LocalSyncManager {
   }
 
   private send(payload: Record<string, unknown>): void {
-    if (this.android) {
-      this.android.send(JSON.stringify(payload));
-    } else if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(payload));
     }
   }
 
   public async createRoom(peer: RoomPeer, eventType: EventType, transport: TransportMode): Promise<void> {
     const message = { type: 'room:create', peer: { ...peer, peerId: this.peerId }, eventType, transport };
-    if (this.android) {
-      this.android.open(transport, JSON.stringify(message));
-      return;
-    }
     if (transport !== 'wifi') {
-      this.callbacks.onError?.('Para jugar por Bluetooth, descarga el APK de Android.');
+      this.callbacks.onError?.('Las salas web requieren Wi-Fi.');
       return;
     }
     const ok = await this.ensureConnected();
@@ -182,14 +164,10 @@ export class LocalSyncManager {
     this.callbacks.onStatus?.('Cuando aparezca el código, compártelo con los invitados.');
   }
 
-  public async joinRoom(code: string, peer: RoomPeer, transport: TransportMode, address = ''): Promise<void> {
+  public async joinRoom(code: string, peer: RoomPeer, transport: TransportMode): Promise<void> {
     const message = { type: 'room:join', code: code.trim().toUpperCase(), peer: { ...peer, peerId: this.peerId }, transport };
-    if (this.android) {
-      this.android.open(transport, JSON.stringify(message), address.trim());
-      return;
-    }
     if (transport !== 'wifi') {
-      this.callbacks.onError?.('Para jugar por Bluetooth, descarga el APK de Android.');
+      this.callbacks.onError?.('Las salas web requieren Wi-Fi.');
       return;
     }
     const ok = await this.ensureConnected();
@@ -229,14 +207,10 @@ export class LocalSyncManager {
   }
 
   public endRoom(): void {
-    if (this.android) {
-      this.android.close();
-      this.callbacks.onRoomEnded?.('Saliste de la sala local.');
-    } else this.send({ type: 'room:end' });
+    this.send({ type: 'room:end' });
   }
 
   public disconnect(): void {
-    this.android?.close();
     if (this.ws) {
       this.ws.close();
       this.ws = null;
