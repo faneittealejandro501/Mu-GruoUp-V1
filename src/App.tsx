@@ -1761,8 +1761,9 @@ export default function App() {
 
       {(screenStage === 'playing' || screenStage === 'paused') && character && (
         <>
-          {roomState && (
-            <div className="pointer-events-none fixed top-2.5 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-1.5">
+          <MuHudOverlay
+            room={roomState && (
+            <div className="pointer-events-none flex flex-col items-center gap-1.5">
               <div className="rounded-lg bg-[#0e131d]/92 border border-sky-500/40 px-3 py-1 text-xs font-mono-tabular text-sky-200 flex items-center gap-2">
                 {roomState.transport === 'wifi' ? (
                   <Wifi className="w-3.5 h-3.5 text-sky-400 shrink-0" />
@@ -1796,8 +1797,7 @@ export default function App() {
             </div>
           )}
 
-          {/* Floating Combat & Loot Feedback */}
-          <div className={`pointer-events-none fixed ${nearbyNpc ? 'top-36' : 'top-20 sm:top-28'} left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-1`}>
+            banners={banners.length > 0 && <div className="pointer-events-none flex flex-col items-center gap-1">
             {banners.map((b) => (
               <div
                 key={b.id}
@@ -1807,9 +1807,7 @@ export default function App() {
                 {b.text}
               </div>
             ))}
-          </div>
-
-          <MuHudOverlay
+          </div>}
             character={character}
             comboConfig={comboConfig}
             helperEnabled={helperEnabled}

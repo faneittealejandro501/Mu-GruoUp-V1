@@ -11,7 +11,7 @@
   "maps": {
     "flaris": {
       "name": "Flaris",
-      "cityRadius": 500,
+      "cityRadius": 90,
       "sizeMeters": 3072,
       "minLevel": 1,
       "maxLevel": 25,

@@ -150,7 +150,7 @@ export class FlyffActor {
       scene.onAfterAnimationsObservable.remove(followSpine);
     });
 
-    const slots = ['torso', 'helmet', 'pants', 'hands', 'feet', 'weapon', 'offhand', 'wings'];
+    const slots = ['torso', 'helmet', 'pants', 'hands', 'feet', 'weapon', 'offhand', 'wings', 'pet', 'ring1', 'ring2', 'pendant'];
     this.gear = {};
     for (const s of slots) {
       this.gear[s] = { slot: s, equipped: false, meshes: [], containers: [] };
@@ -619,6 +619,13 @@ export class FlyffWorldStreamer {
 
     const water = createWaterMesh(`water_${tileDef.id}`, this.scene, [
       ...(tileDef.water ?? []),
+      // Extend edge tiles one sector beyond the playable shore, including the corners.
+      ...[-1,0,1].flatMap(dx => [-1,0,1].flatMap(dz => {
+        const size=tileDef.sizeMeters, limit=this.manifest!.sizeMeters;
+        if ((!dx && !dz) || (dx<0 && tileDef.x!==0) || (dx>0 && tileDef.x+size!==limit) ||
+            (dz<0 && tileDef.z!==0) || (dz>0 && tileDef.z+size!==limit)) return [];
+        return [{x:tileDef.x+(dx+.5)*size,z:tileDef.z+(dz+.5)*size,size,height:1,textureId:1}];
+      })),
       // The empty seabed is flat at y=0. A continuous sea surface also covers
       // cells absent from the original lake/river table, below authored land.
       { x:tileDef.x+tileDef.sizeMeters/2, z:tileDef.z+tileDef.sizeMeters/2, size:tileDef.sizeMeters, height:1, textureId:1 },

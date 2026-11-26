@@ -63,6 +63,8 @@ export type HudButtonId =
   | 'settings'
   | 'minimap'
   | 'targetMonster'
+  | 'room'
+  | 'banners'
   | 'damageBox'
   | 'editToolbar';
 

@@ -1,6 +1,5 @@
 import { ShopModel } from './ShopModel';
-import { artisanWeapon } from '../data/artisanEquipment';
-import { ItemPortrait, itemModelFile } from './ItemPortrait';
+import { ItemPortrait, armorModelFile, itemModelFile } from './ItemPortrait';
 import { ITEM_CATALOG } from '../data/itemCatalog';
 import { getAdminConfigSync } from '../services/adminConfigService';
 import React, { useState } from 'react';
@@ -172,11 +171,11 @@ export const NpcShopModal: React.FC<NpcShopModalProps> = ({
                     <div className="text-[11px] text-emerald-300 mt-0.5">{s.excellentOpt}</div>
                     </div>
                   </div>
-                  {(itemModelFile(s) || artisanWeapon(s.name)) && <>
+                  <>
                     <button className="text-xs text-sky-300 text-left py-1" aria-expanded={preview===s.id}
                       onClick={()=>setPreview(preview===s.id ? null : s.id)}>{preview===s.id ? 'Cerrar vista 3D' : 'Ver modelo 3D'}</button>
-                    {preview===s.id && <ShopModel item={s} file={itemModelFile(s)} />}
-                  </>}
+                    {preview===s.id && <ShopModel item={s} file={itemModelFile(s) ?? armorModelFile(s,character.sex) ?? (s.slot==='pendant' ? 'equipo/jewelry_pendant.glb' : ['ring1','ring2'].includes(s.slot) ? 'equipo/jewelry_ring.glb' : undefined)} />}
+                  </>
                   <button
                     onClick={() => onBuyItem(s)}
                     disabled={character.zen < s.zenCost}

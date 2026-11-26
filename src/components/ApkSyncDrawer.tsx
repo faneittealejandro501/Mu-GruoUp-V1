@@ -1,3 +1,5 @@
+import { parseServerOrigin } from '../services/serverConnection';
+import { networkDeadline } from '../services/networkDeadline';
 import { androidClient } from '../services/androidRooms';
 import { offlineInstallReady } from '../services/offlineInstall';
 import { PrivateBackupPanel } from './PrivateBackupPanel';
@@ -89,7 +91,17 @@ export const ApkSyncDrawer: React.FC<ApkSyncDrawerProps> = ({
   };
 
   const handleSaveCloudUrl = async () => {
-    const clean = setConfiguredCloudApiUrl(cloudUrlInput);
+    const origin = parseServerOrigin(cloudUrlInput);
+    if (cloudUrlInput.trim()) {
+      if (!origin) { setNotice('Introduce el origen HTTPS del servidor de cuentas, sin ruta.'); return; }
+      try {
+        const res = await fetch(origin+'/api/account-service',{cache:'no-store',credentials:'omit',
+          redirect:'error',signal:networkDeadline(15000)});
+        const status = res.ok && await res.json();
+        if (status.service !== 'mugroup-accounts' || status.recovery !== true) throw Error();
+      } catch { setNotice('Este servidor no responde con un servicio de cuentas y recuperación activo. Comprueba la dirección.'); return; }
+    }
+    const clean = setConfiguredCloudApiUrl(origin);
     setCloudUrlInput(clean);
     cloudSyncManager.resetApiProbe();
     const res = await cloudSyncManager.syncNow();

@@ -349,7 +349,7 @@ class CloudSyncManager {
   }
 
   public async syncNow(queuedId?: string): Promise<{ ok: boolean; message: string }> {
-    if (this.syncing) return { ok: true, message: 'Sincronización en curso…' };
+    if (this.syncing) return { ok: false, message: 'Sincronización en curso…' };
     const id = queuedId || this.activeAccountId;
     if (!navigator.onLine || !id) return { ok: false, message: 'Progreso disponible en este dispositivo.' };
     this.syncing = true;
@@ -383,7 +383,10 @@ class CloudSyncManager {
           ] : undefined);
         await setKvSetting(marker,enabled ? stamp : stamp + ':pending');
         this.recoveryRetryAt.set(id,Date.now()+5*60_000);
+        if (!enabled) throw Error('Cuenta vinculada; el servidor aún no admite recuperación con preguntas.');
       }
+      if (prior === stamp + ':pending' && await getKvSetting(marker,'') !== stamp)
+        throw Error('La recuperación con preguntas aún está pendiente.');
       await this.refreshPendingCount();
       await db.kvMeta.delete('privateBackup:pending:' + id);
       const message = `Copia privada al día (${copy.characters.length} héroes)`;

@@ -60,6 +60,8 @@ export interface WorldTelemetryInfo {
 }
 
 interface MuHudOverlayProps {
+  room: React.ReactNode;
+  banners: React.ReactNode;
   character: MuCharacter;
   comboConfig: CharacterComboConfig;
   comboArmed: boolean;
@@ -114,7 +116,7 @@ const LOOT_FILTER_OPTIONS: Array<{ key: LootFilterKey; label: string; colorClass
 ];
 
 export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
-  character,
+  character, room, banners,
   comboConfig,
   comboArmed,
   helperEnabled,
@@ -269,7 +271,7 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
   const wrapButton = (id: HudButtonId, children: React.ReactNode) => {
     const layout = buttonLayouts[id] || DEFAULT_BUTTON_LAYOUTS[id];
     const isSelected = editMode && selectedEditId === id;
-    const isPassiveDisplay = !editMode && (id === 'minimap' || id === 'targetMonster' || id === 'damageBox' || id === 'status' || id === 'vitals');
+    const isPassiveDisplay = !editMode && (id === 'room' || id === 'banners' || id === 'minimap' || id === 'targetMonster' || id === 'damageBox' || id === 'status' || id === 'vitals');
     const zClass = id === 'editToolbar' ? 'z-40' : id === 'damageBox' ? 'z-15' : 'z-20';
     return (
       <div
@@ -298,6 +300,7 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
         }`}
       >
         {children}
+        {editMode && id !== 'editToolbar' && <div aria-hidden="true" className="absolute inset-0 z-50 touch-none" />}
       </div>
     );
   };
@@ -329,6 +332,8 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
 
   return (
     <>
+      {(room || editMode) && wrapButton('room', room || 'Sala y jefe')}
+      {(banners || editMode) && wrapButton('banners', banners || 'Avisos de combate')}
       {/* DRAGGABLE & SCALABLE FLOATING COMBAT DAMAGE BOX */}
       {(damageNumbers.length > 0 || editMode) &&
         wrapButton(
@@ -603,6 +608,13 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
             >
               {Object.values(DEFAULT_BUTTON_LAYOUTS).map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
             </select>
+            {selectedEditId && (['xPct','yPct'] as const).map(axis => <label key={axis} className="flex items-center gap-1 text-xs">
+              {axis === 'xPct' ? 'X' : 'Y'}
+              <input type="range" min="1" max="99" step="1" aria-label={axis === 'xPct' ? 'Posición horizontal' : 'Posición vertical'}
+                className="w-16" value={buttonLayouts[selectedEditId][axis]}
+                onChange={e=>onUpdateButtonLayouts({...buttonLayouts,[selectedEditId]:{
+                  ...buttonLayouts[selectedEditId],[axis]:Number(e.currentTarget.value)}})} />
+            </label>)}
             <span className="text-xs text-amber-300">{Math.round((buttonLayouts[selectedEditId || 'attack']?.scale ?? 1) * 100)}%</span>
             <button
               onClick={() => adjustSelectedScale(-0.1)}

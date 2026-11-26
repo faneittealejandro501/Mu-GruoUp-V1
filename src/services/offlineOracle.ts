@@ -79,7 +79,7 @@ export function generateOfflineBuildAnalysis(
   const eventReadiness =
     character.level >= 75 && wings
       ? `Listo para Cráter de Ceniza y Jefes Supremos (Mapa ideal ahora: ${recommendedMap.name}).`
-      : `Zona recomendada: ${recommendedMap.name} (Nv.${recommendedMap.minLevel}-${recommendedMap.maxLevel}). Recuerda que cada ciudad tiene 500m de zona segura.`;
+      : `Zona recomendada: ${recommendedMap.name} (Nv.${recommendedMap.minLevel}-${recommendedMap.maxLevel}). Su zona segura se extiende ${recommendedMap.cityRadius} m desde el centro.`;
 
   const recommendations = [
     `Raza ${MU_CLASSES.find((c) => c.id === character.classType)?.name ?? character.classType}: combina ${tip.keySkill}.`,
@@ -134,8 +134,8 @@ export function generateOfflineOracleReply(
     return [
       `[Oráculo Offline · MuGro-up'] Guía de Mundo Abierto:`,
       `• Tu nivel (${playerContext.level}) encaja mejor en: ${recommendedMap.name} (Nv.${recommendedMap.minLevel}–${recommendedMap.maxLevel}).`,
-      `• Todas las capitales tienen un radio seguro de 500 metros: ningún monstruo entra y no hay combate adentro.`,
-      `• Sal más allá de 500m del centro de la ciudad para cazar más de 40 especies animadas y recoger joyas.`,
+      `• Dentro de las capitales estás a salvo: ningún monstruo entra y no hay combate adentro.`,
+      `• En ${recommendedMap.name}, sal de su radio seguro de ${recommendedMap.cityRadius} m para cazar y recoger joyas.`,
     ].join('\n');
   }
 
@@ -162,6 +162,6 @@ export function generateOfflineOracleReply(
     `• Equipo activo: ${playerContext.equippedItems.slice(0, 4).join(', ') || 'Equipo inicial'}.`,
     `• Zona recomendada ahora: ${recommendedMap.name} · Rol: ${tip.role}.`,
     `• Habilidad recomendada: ${tip.keySkill}.`,
-    `Pregúntame sobre forja (+0 a +15), estadísticas, alas, zonas de caza (500m seguros) o sincronización offline.`,
+    `Pregúntame sobre forja (+0 a +15), estadísticas, alas, zonas de caza o sincronización offline.`,
   ].join('\n');
 }
