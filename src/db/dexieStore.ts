@@ -351,11 +351,10 @@ export async function recoverAccountLocal(
   if (newPassword.length < 4) {
     return { ok: false, error: 'La nueva contraseña debe tener al menos 4 caracteres.' };
   }
-  await db.accounts.put({
-    ...acc,
-    passwordHash: await hashSecret(newPassword),
-    updatedAt: Date.now(),
-    isSynced: false,
+  const passwordHash = await hashSecret(newPassword);
+  await db.transaction('rw',db.accounts,db.kvMeta,async()=>{
+    await db.accounts.put({...acc,passwordHash,updatedAt:Math.max(Date.now(),acc.updatedAt+1),isSynced:false});
+    await db.kvMeta.put({key:'privateBackup:pending:' + acc.id,value:true});
   });
   return { ok: true };
 }

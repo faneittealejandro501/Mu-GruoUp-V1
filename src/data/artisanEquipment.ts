@@ -41,6 +41,9 @@ for (const [c, classType] of classes.entries()) {
       const style = (variant + (origin === 'Lorencia' ? 2 : 0)) % 5;
       const key = `artisan-${classType.toLowerCase()}-${origin.toLowerCase()}-${variant+1}`;
       const label = `${spec.weapon} ${finish} ${variant < 10 ? 'Viajera' : 'Real'} · ${origin}`;
+      // NPC portrait, shop preview and equipped weapon share this textured mesh.
+      const models = armaments[classType];
+      armamentPaths.set(label, models[(variant + (origin === 'Lorencia' ? 5 : 0)) % models.length]);
       weapons.set(label, { key, label, classType, metal, trim, element, style, length: (origin === 'Lorencia' ? 1.00 : .83) + (variant % 10)*.023 + (variant >= 10 ? .09 : 0) });
       ARTISAN_CATALOG.push({
         id: key, name: label, slot: 'weapon', category: 'weapon', setName: `Forja de ${origin}`,

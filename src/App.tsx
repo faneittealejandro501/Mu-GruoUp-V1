@@ -1979,9 +1979,9 @@ export default function App() {
               if (!syncRef.current) return;
               await syncRef.current.createRoom(buildPeerSnapshot(), evType, trans);
             }}
-            onJoinRoom={async (code, trans, address) => {
+            onJoinRoom={async (code, trans) => {
               if (!syncRef.current) return;
-              await syncRef.current.joinRoom(code, buildPeerSnapshot(), trans, address);
+              await syncRef.current.joinRoom(code, buildPeerSnapshot(), trans);
             }}
             onStartEvent={(evType) => {
               syncRef.current?.startEvent(evType);

@@ -76,7 +76,7 @@ export const NpcShopModal: React.FC<NpcShopModalProps> = ({
               {npc.name} · {npc.title}
             </h2>
             <p className="text-[11px] font-mono-tabular text-slate-300">
-              Zen: {character.zen.toLocaleString()} · Bless {character.bless} · Soul {character.soul} · Chaos {character.chaos}
+              <img src="./mugroup/ui/items/zen.webp" width={20} height={16} className="inline-block mr-1 rounded-sm" alt="" />Zen: {character.zen.toLocaleString()} · Bless {character.bless} · Soul {character.soul} · Chaos {character.chaos}
             </p>
           </div>
           <button

@@ -1,4 +1,5 @@
-import { discoverSharedServer, isPublishedClient } from './serverConnection';
+import Dexie from 'dexie';
+import { discoverSharedServer, isPublishedClient, sharedServerOrigin } from './serverConnection';
 import { loginNameTaken, lookupAccountLink, lookupRecoveryLink, lookupRecoveryQuestions, publishAccountLink } from './accountLink';
 import { generateRecoveryCode, syncEncryptedBackup } from './privateBackup';
 import { db, hashSecret, getKvSetting, initDexie, normalizeCharacterRecord, setKvSetting } from '../db/dexieStore';
@@ -33,14 +34,47 @@ class CloudSyncManager {
     error: null,
   };
 
-  private async syncPending() {
+  private backgroundRequest?: Promise<void>;
+  private scheduleOfflineUpload = () => {
+    if (navigator.onLine || !navigator.serviceWorker || this.backgroundRequest) return;
+    // Custom servers selected in this browser are handled by the foreground client.
+    const configured = getConfiguredCloudApiUrl();
+    if (configured && configured !== sharedServerOrigin() && configured !== location.origin) return;
+    this.backgroundRequest = navigator.serviceWorker.ready.then(async reg => {
+      const sync = (reg as ServiceWorkerRegistration & {sync?: {register(tag:string):Promise<void>}}).sync;
+      await sync?.register('mu-account-backup');
+    }).catch(() => {}).finally(() => { this.backgroundRequest = undefined; });
+  };
+
+  public async syncPending(background = false) {
+    // A sync event can arrive during a network transition. Reject it so the
+    // browser retains the job instead of acknowledging an empty upload.
+    if (background && !navigator.onLine) throw new Error('Sin conexión');
     if (this.activeAccountId) await this.syncNow();
     const prefix = 'privateBackup:pending:';
     const queued = await db.kvMeta.where('key').startsWith(prefix).toArray();
-    for (const entry of queued) {
-      const id = entry.key.slice(prefix.length);
-      if (id !== this.activeAccountId && navigator.onLine) await this.syncNow(id);
+    const ids = new Set(queued.map(entry => entry.key.slice(prefix.length)));
+    // A player can earn items offline and sign out before the next upload.
+    const dirty = await db.characters.filter(character => !character.isSynced).toArray();
+    for (const id of new Set(dirty.map(character => character.accountId))) {
+      if (await db.kvMeta.get('privateBackup:' + id)) ids.add(id);
     }
+    let failure: string | undefined;
+    for (const id of ids) {
+      if (id === this.activeAccountId) continue;
+      if (!navigator.onLine) {
+        if (background) throw new Error('Sin conexión');
+        break;
+      }
+      if (background) {
+        // Background jobs may only contact the trusted deployment for already enrolled accounts.
+        const binding = await getKvSetting<{endpoint:string} | null>('privateBackup:' + id,null);
+        if (!binding || binding.endpoint !== (await this.backupEndpoint()).href) continue;
+      }
+      const result = await this.syncNow(id);
+      if (background && !result.ok) failure = result.message;
+    }
+    if (failure) throw new Error(failure);
   }
 
   private onOnline = () => {
@@ -50,6 +84,7 @@ class CloudSyncManager {
   };
 
   private onOffline = () => {
+    this.scheduleOfflineUpload();
     this.updateStatus({
       isOnline: false,
       isOfflineMode: true,
@@ -66,7 +101,15 @@ class CloudSyncManager {
     if (accountId && accountId !== 'acc-lorencia-demo') {
       // Keep offline enrollments queued even if the player signs out before reconnecting.
       void setKvSetting('privateBackup:pending:' + accountId,true)
-        .then(() => { if (navigator.onLine) return this.syncNow(accountId); })
+        .then(async () => {
+          if (navigator.onLine) { await this.syncNow(accountId); return; }
+          const existing = await db.kvMeta.get('privateBackup:' + accountId);
+          if (!existing && this.activeAccountId === accountId &&
+              (getConfiguredCloudApiUrl() || !isPublishedClient(location.hostname))) {
+            await this.preparePrivateBackup();
+          }
+          this.scheduleOfflineUpload();
+        })
         .catch(() => this.updateStatus({error:'No se pudo programar la copia de esta cuenta.'}));
     }
   }
@@ -93,6 +136,8 @@ class CloudSyncManager {
 
   public start(): void {
     if (typeof window === 'undefined') return;
+    Dexie.on('storagemutated', this.scheduleOfflineUpload);
+    this.scheduleOfflineUpload();
     window.addEventListener('online', this.onOnline);
     window.addEventListener('offline', this.onOffline);
     void this.refreshPendingCount();
@@ -111,6 +156,7 @@ class CloudSyncManager {
 
   public stop(): void {
     if (typeof window !== 'undefined') {
+      Dexie.on('storagemutated').unsubscribe(this.scheduleOfflineUpload);
       window.removeEventListener('online', this.onOnline);
       window.removeEventListener('offline', this.onOffline);
     }
@@ -162,7 +208,7 @@ class CloudSyncManager {
     if (this.apiProbeState === 'available') return '';
 
     const ctrl = new AbortController();
-    const timer = window.setTimeout(() => ctrl.abort(), 2500);
+    const timer = setTimeout(() => ctrl.abort(), 2500);
     try {
       const res = await fetch('/api/ota/manifest', { signal: ctrl.signal });
       if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
@@ -172,7 +218,7 @@ class CloudSyncManager {
     } catch {
       // static host / offline
     } finally {
-      window.clearTimeout(timer);
+      clearTimeout(timer);
     }
     this.apiProbeState = 'unknown';
     return null;
@@ -180,8 +226,8 @@ class CloudSyncManager {
 
   private async backupEndpoint(): Promise<URL> {
     const base = await this.resolveApiBase();
-    if (base === null) throw new Error('No hay conexión con un servidor de cuentas. Si la partida está en otro dispositivo, abre Web / APKweb allí, exporta el respaldo e impórtalo aquí.');
-    return new URL(base + '/api/private-backup', window.location.origin);
+    if (base === null) throw new Error('No hay conexión con un servidor de cuentas. Si la partida está en otro dispositivo, abre Web / APK-WEB allí, exporta el respaldo e impórtalo aquí.');
+    return new URL(base + '/api/private-backup', location.origin);
   }
 
   private async snapshot(id: string): Promise<{ account: MuAccount; characters: MuCharacter[] }> {

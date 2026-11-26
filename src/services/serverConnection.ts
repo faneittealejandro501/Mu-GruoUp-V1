@@ -7,7 +7,7 @@ let pending: Promise<string> | undefined;
 let retryAt = 0;
 
 export function isPublishedClient(hostname: string) {
-  return hostname === pages.hostname || hostname === 'apk.mugroup.invalid';
+  return hostname === pages.hostname;
 }
 
 export function parseServerOrigin(value: unknown): string {

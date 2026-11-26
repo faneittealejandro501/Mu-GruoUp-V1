@@ -152,7 +152,7 @@ export function generateOfflineOracleReply(
     return [
       `[Oráculo Offline · MuGro-up'] Modo Offline y Sincronización Bidireccional:`,
       `• Tu partida se guarda en el navegador. Instala la aplicación y espera a que termine la descarga para usarla sin internet.`,
-      `• Las salas Wi-Fi usan el servidor local. Activa la copia privada en el panel Web/APKweb para guardar el progreso al volver la conexión.`,
+      `• Las salas Wi-Fi usan el servidor local. Activa la copia privada en el panel Web/APK-WEB para guardar el progreso al volver la conexión.`,
       `• Intercambios locales acumulados: ${playerContext.sharedCount}.`,
     ].join('\n');
   }

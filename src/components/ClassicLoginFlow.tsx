@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { MU_CLASSES } from '../data/muSkillsAndClasses';
 import type { HeroClass, MuAccount, MuCharacter, SyncStatusInfo } from '../types/game';
-import { AndroidDownloadLink, PWAInstallButton, isStandaloneApp } from './PWAInstallButton';
+import { PWAInstallButton, isStandaloneApp } from './PWAInstallButton';
 
 interface ClassicLoginFlowProps {
   stage: 'login' | 'character_select';
@@ -276,7 +276,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <AndroidDownloadLink />
+
           <PWAInstallButton />
           {stage === 'character_select' && currentAccount && (
             <button
