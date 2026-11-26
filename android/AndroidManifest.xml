@@ -8,6 +8,7 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
     <application android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen" android:label="MuGro-up" android:icon="@drawable/mugroup" android:allowBackup="false" android:usesCleartextTraffic="false">
+        <service android:name="com.mugroup.offline.UpdateJob" android:exported="true" android:permission="android.permission.BIND_JOB_SERVICE" />
         <activity android:name="com.mugroup.offline.GameActivity" android:screenOrientation="sensorLandscape"
             android:configChanges="orientation|screenSize|keyboardHidden" android:exported="true">
             <intent-filter>

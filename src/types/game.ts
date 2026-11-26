@@ -298,6 +298,7 @@ export interface FloatingDamageNumber {
 }
 
 export interface MinimapEntitySnapshot {
+  camps: ReadonlyArray<{x:number;z:number}>;
   mapId: MapId;
   sizeMeters: number;
   hero: { x: number; z: number; heading?: number };

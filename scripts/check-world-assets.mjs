@@ -113,7 +113,7 @@ for (const w of wingCatalog) {
 }
 const pet=await glb('equipo/pet_angel_white.glb');
 assert(pet.images.length && pet.animations.some(a=>a.name==='stand'));
-for (const id of ['pet_angel_white','ring1','ring2','pendant']) await asset('ui/items/'+id+'.webp');
+for (const id of ['pet_angel_white','ring1','ring2','pendant','jewel-bless','jewel-soul','jewel-chaos','jewel-life','jewel-harmony']) await asset('ui/items/'+id+'.webp');
 
 const media = await readJSON('efectos-audio.json');
 for (const path of Object.values(media.sounds)) await asset(path);

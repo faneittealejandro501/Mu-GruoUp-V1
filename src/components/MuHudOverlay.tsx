@@ -187,6 +187,9 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
     pointerId: number;
     startX: number;
     startY: number;
+    resize: boolean;
+    scale: number;
+    radius: number;
     origXPct: number;
     origYPct: number;
     minX: number;
@@ -227,6 +230,9 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
       pointerId: e.pointerId,
       startX: e.clientX,
       startY: e.clientY,
+      resize: !!(e.target as Element).closest('[data-resize]'),
+      scale: current.scale,
+      radius: Math.max(20, Math.hypot(box.width,box.height)/2),
       origXPct: current.xPct,
       origYPct: current.yPct,
       minX: Math.min(50, box.width / window.innerWidth * 50),
@@ -240,6 +246,13 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
     if (dragState.current.pointerId !== e.pointerId) return;
     e.stopPropagation();
 
+    const drag = dragState.current;
+    if (drag.resize) {
+      const delta = ((e.clientX-drag.startX)+(e.clientY-drag.startY))/Math.SQRT2;
+      const scale = Math.max(.35, Math.min(2, drag.scale*(1+delta/drag.radius)));
+      onUpdateButtonLayouts({...buttonLayouts,[id]:{...buttonLayouts[id],scale}});
+      return;
+    }
     const dxPct = ((e.clientX - dragState.current.startX) / window.innerWidth) * 100;
     const dyPct = ((e.clientY - dragState.current.startY) / window.innerHeight) * 100;
     const { minX, minY, origXPct, origYPct } = dragState.current;
@@ -302,6 +315,7 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
         }`}
       >
         {children}
+        {isSelected && id !== 'editToolbar' && <span data-resize title="Arrastra para cambiar el tamaño" className="absolute -right-2 -bottom-2 z-[51] grid h-8 w-8 touch-none place-items-center rounded-full bg-amber-400 text-black cursor-nwse-resize">↘</span>}
         {editMode && id !== 'editToolbar' && <div aria-hidden="true" className="absolute inset-0 z-50 touch-none" />}
       </div>
     );
@@ -463,6 +477,9 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
             <span>N ↑</span>
           </div>
 
+          <svg aria-label="Campamentos de monstruos" className="absolute inset-0 w-full h-full" viewBox={`0 0 ${minimapData.sizeMeters} ${minimapData.sizeMeters}`}>
+            {minimapData.camps.map((camp,i)=><circle key={i} cx={camp.x} cy={camp.z} r="17" fill="#ffbb69"/>)}
+          </svg>
           {/* Red dots = Monsters */}
           {minimapData.monsters.map((m) => {
             const p = projectToMinimap(m.x, m.z, minimapData.mapId, minimapData.sizeMeters);

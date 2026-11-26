@@ -27,6 +27,8 @@ import {
   getSharedLedger,
   initDexie,
   getWorldAdminProfile,
+  getLocalRecoveryQuestions,
+  recoverAccountLocal,
   listAccounts,
   listCharactersByAccount,
   loadButtonLayouts,
@@ -1308,12 +1310,20 @@ export default function App() {
       const [secretQ1,secretQ2] = await cloudSyncManager.recoveryQuestions(username);
       return {found:true,secretQ1,secretQ2,source:'cloud'};
     } catch (e) {
+      const local = await getLocalRecoveryQuestions(username);
+      if (local.found) return {...local, source:'local'};
       return {found:false,error:e instanceof Error ? e.message : 'La recuperación no está disponible.'};
     }
   };
 
-  const handleRecoverAccount = async (input: {username:string; slot:1|2; answer:string; newPassword:string}) => {
+  const handleRecoverAccount = async (input: {username:string; slot:1|2; answer:string; secondAnswer?:string; newPassword:string}) => {
     try {
+      if (input.secondAnswer !== undefined) {
+        const result = await recoverAccountLocal(input.username,input.answer,input.secondAnswer,input.newPassword);
+        if (!result.ok) return result;
+        setAccounts(await listAccounts());
+        return {ok:true,message:'Contraseña cambiada en este dispositivo. Entra para sincronizar tu partida.'};
+      }
       await cloudSyncManager.recoverLogin(input.username,input.slot,input.answer,input.newPassword);
       setAccounts(await listAccounts());
       return {ok:true,message:'Cuenta recuperada. Entra con tu nueva contraseña.'};

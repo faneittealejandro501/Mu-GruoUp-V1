@@ -261,6 +261,7 @@ export class MuWorldEngine {
   private activeBonuses = { atkBonusPct: 0, speedBonusPct: 0, critBonusPct: 0 };
 
   private monsters: ActiveMonster[] = [];
+  private campMarkers: {x:number;z:number}[] = [];
   private monsterGrid = new SpawnGrid<ActiveMonster>();
   private eventMobs: ActiveMonster[] = [];
   private eventKey = '';
@@ -1067,6 +1068,7 @@ export class MuWorldEngine {
     }
     for (const l of this.loots) l.mesh.dispose();
     this.monsters = [];
+    this.campMarkers = [];
     this.eventMobs = []; this.eventKey = '';
     this.npcs = [];
     if (this.lastNearbyNpcId !== null) this.callbacks.onNearbyNpcChange?.(null);
@@ -1317,6 +1319,7 @@ export class MuWorldEngine {
         originalSpecies: entry.speciesId, alive: true,
       };
       this.monsterRoamLimit = Math.max(this.monsterRoamLimit, def.roamRadius ?? 40);
+      if (camp !== undefined && i % CAMP_SIZE === 0) this.campMarkers.push({x:mx,z:mz});
       this.monsters.push(mob);
       this.monsterGrid.add(mx, mz, mob);
     }
@@ -1808,6 +1811,7 @@ export class MuWorldEngine {
       mapId: this.currentMap.id,
       sizeMeters: this.currentMap.worldSize || 3072,
       hero: { x: this.heroX, z: this.heroZ, heading: this.heroRotY },
+      camps: this.campMarkers,
       monsters: Array.from(this.nearMonsters(150))
         .filter((m) => m.alive && Math.hypot(m.x - this.heroX, m.z - this.heroZ) <= 150)
         .map((m) => ({ id: m.id, x: m.x, z: m.z, isBoss: m.def.isBoss })),
@@ -1851,6 +1855,7 @@ export class MuWorldEngine {
     }
     this.entityContainerCache.clear();
     this.monsters = [];
+    this.campMarkers = [];
     this.eventMobs = []; this.eventKey = '';
     this.npcs = [];
     this.loots = [];

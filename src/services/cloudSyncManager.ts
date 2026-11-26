@@ -63,7 +63,12 @@ class CloudSyncManager {
 
   public setActiveAccountId(accountId: string | null): void {
     this.activeAccountId = accountId;
-    if (accountId && navigator.onLine) void this.syncNow();
+    if (accountId && accountId !== 'acc-lorencia-demo') {
+      // Keep offline enrollments queued even if the player signs out before reconnecting.
+      void setKvSetting('privateBackup:pending:' + accountId,true)
+        .then(() => { if (navigator.onLine) return this.syncNow(accountId); })
+        .catch(() => this.updateStatus({error:'No se pudo programar la copia de esta cuenta.'}));
+    }
   }
 
   public resetApiProbe(): void {
@@ -175,7 +180,7 @@ class CloudSyncManager {
 
   private async backupEndpoint(): Promise<URL> {
     const base = await this.resolveApiBase();
-    if (base === null) throw new Error('El servidor de cuentas de MuGro-up no está configurado o no responde.');
+    if (base === null) throw new Error('No hay conexión con un servidor de cuentas. Si la partida está en otro dispositivo, abre Web / APKweb allí, exporta el respaldo e impórtalo aquí.');
     return new URL(base + '/api/private-backup', window.location.origin);
   }
 

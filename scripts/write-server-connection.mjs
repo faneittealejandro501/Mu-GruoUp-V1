@@ -1,23 +1,26 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 let configured = (process.env.VITE_BACKUP_URL || process.env.VITE_WORLD_SERVER_URL || '').trim();
-const required = process.env.REQUIRE_ACCOUNT_SERVICE === 'true';
+const publishing = process.env.PUBLISH_RELEASE === 'true';
 const pages = JSON.parse(readFileSync('public/ota-manifest.json','utf8')).pagesUrl;
 // Keep subsequent releases on the endpoint chosen by the previous official release.
-if (required && !configured) {
+if (publishing && !configured) {
   const response = await fetch(new URL('server-connection.json', pages), {
     redirect:'error', signal:AbortSignal.timeout(10000),
-  }).catch(() => null);
-  if (response?.ok) {
-    const previous = await response.json().catch(() => null);
-    if (typeof previous?.origin === 'string') configured = previous.origin.trim();
+  });
+  if (response.ok) {
+    const previous = await response.json();
+    if (typeof previous?.origin !== 'string') throw Error('La configuración publicada de cuentas es inválida.');
+    configured = previous.origin.trim();
+  } else if (response.status !== 404 && response.status !== 410) {
+    throw Error('No se pudo verificar la configuración de cuentas anterior: HTTP ' + response.status);
   }
 }
 const url = configured ? new URL(configured) : null;
 if (url && (url.protocol !== 'https:' || url.username || url.password || url.pathname !== '/' || url.search || url.hash)) {
   throw Error('VITE_BACKUP_URL debe ser el origen HTTPS del servidor, sin ruta ni credenciales.');
 }
-if (required) {
-  if (!url) throw Error('Falta el servidor de cuentas. Configura VITE_BACKUP_URL en Actions o indica account_origin al ejecutar Deploy GitHub Pages.');
+if (publishing && !url) console.warn('Edición local: no hay servidor configurado para recuperar cuentas entre dispositivos.');
+if (publishing && url) {
   for (const origin of [new URL(pages).origin,'https://apk.mugroup.invalid']) {
     const options = {headers:{Origin:origin}, redirect:'error', signal:AbortSignal.timeout(15000)};
     const status = await fetch(new URL('/api/account-service',url),options);

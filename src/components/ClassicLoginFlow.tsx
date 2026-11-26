@@ -44,6 +44,7 @@ interface ClassicLoginFlowProps {
   ) => Promise<{ found: true; secretQ1: string; secretQ2: string; source: 'local' | 'cloud' } | { found: false; error?: string }>;
   onRecoverAccount: (input: {
     username: string;
+    secondAnswer?: string;
     slot: 1|2;
     answer: string;
     newPassword: string;
@@ -115,6 +116,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
   // Recover Account state
   const [recUser, setRecUser] = useState('');
   const [recQuestions, setRecQuestions] = useState<{ q1: string; q2: string; source: 'local' | 'cloud' } | null>(null);
+  const [secondAnswer,setSecondAnswer] = useState('');
   const [recSlot,setRecSlot] = useState<1|2>(1);
   const [recAnswer,setRecAnswer] = useState('');
   const [recNewPass, setRecNewPass] = useState('');
@@ -202,6 +204,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
     try {
       const res = await onLookupRecoveryQuestions(recUser);
       if (!res.found) {
+        setSecondAnswer('');
         setRecQuestions(null);
         setAuthError(res.error || 'No se encontró esa cuenta en el dispositivo ni en la nube.');
       } else {
@@ -222,6 +225,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
       const res = await onRecoverAccount({
         username: recUser,
         slot:recSlot,
+        secondAnswer:recQuestions?.source === 'local' ? secondAnswer : undefined,
         answer:recAnswer,
         newPassword: recNewPass,
       });
@@ -231,6 +235,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
         setAuthSuccess(res.message || 'Cuenta recuperada y contraseña restablecida.');
         setUsername(recUser.trim().toLowerCase());
         setPassword(recNewPass);
+        setSecondAnswer('');
         setRecQuestions(null);
         setRecAnswer('');
         setRecNewPass('');
@@ -588,6 +593,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
                         value={recUser}
                         onChange={(e) => {
                           setRecUser(e.target.value);
+                          setSecondAnswer('');
                           setRecQuestions(null);
                           setRecAnswer('');
                         }}
@@ -608,18 +614,21 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
 
                   {recQuestions && (
                     <form onSubmit={handleRecoverSubmit} className="space-y-2.5 p-3 rounded-lg bg-[#090d16] border border-sky-500/40">
-                      <label className="block text-xs text-amber-200">
+                      {recQuestions.source === 'local' ? <label htmlFor="recovery-answer" className="block text-xs text-amber-200">{recQuestions.q1}</label> : <label className="block text-xs text-amber-200">
                         Elige una pregunta de recuperación
                         <select value={recSlot} onChange={e=>{setRecSlot(e.target.value === '2' ? 2 : 1); setRecAnswer('');}}
                           className="block w-full min-h-[40px] rounded-lg bg-[#080b12] border border-slate-700 px-3">
                           <option value={1}>{recQuestions.q1}</option>
                           <option value={2}>{recQuestions.q2}</option>
                         </select>
-                      </label>
-                      <input type="password" value={recAnswer} onChange={e=>setRecAnswer(e.target.value)}
+                      </label>}
+                      <input id="recovery-answer" type="password" value={recAnswer} onChange={e=>setRecAnswer(e.target.value)}
                         placeholder="Respuesta de recuperación" aria-label="Respuesta de recuperación" required
                         className="w-full min-h-[40px] rounded-lg bg-[#080b12] border border-slate-700 px-3 text-sm text-slate-100" />
                       <div>
+                        {recQuestions.source === 'local' && <label className="block text-xs text-amber-200">{recQuestions.q2}
+                          <input type="password" required value={secondAnswer} onChange={e=>setSecondAnswer(e.target.value)} className="block w-full min-h-[40px] rounded-lg bg-slate-900 p-2" />
+                        </label>}
                         <label className="block text-xs text-slate-300 mb-1">Nueva Contraseña</label>
                         <input
                           type="password"

@@ -93,6 +93,6 @@
 .item-portrait > img, .item-portrait > svg { width:100%; height:100%; object-fit:contain; }
 .item-upgraded > * { filter:drop-shadow(0 0 2px var(--shine)); }
 @media (prefers-reduced-motion:no-preference) {
-  .item-upgraded::after { content:'✦'; position:absolute; right:13%; top:12%; color:var(--shine); font-size:.72em; animation:mu-item-sparkle 3s ease-in-out infinite; }
+  .item-upgraded::after { content:''; position:absolute; right:11%; top:10%; width:32%; height:32%; background:var(--sparkle) center/contain no-repeat; mix-blend-mode:screen; filter:drop-shadow(0 0 2px var(--shine)); animation:mu-item-sparkle var(--sparkle-period) ease-in-out infinite; }
   @keyframes mu-item-sparkle { 0%,65%,100% {opacity:0; transform:scale(.4)} 83% {opacity:1; transform:scale(1)} }
 }
