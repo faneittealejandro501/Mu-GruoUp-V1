@@ -20,3 +20,9 @@ def convert(icon):
 
 with ThreadPoolExecutor(max_workers=8) as pool:
     list(pool.map(convert, sorted(dest.glob('*.webp'))))
+
+# MU jewel names retain their gameplay meaning; these portraits use Flyff gems.
+for jewel, material in {'bless':'Ruby', 'soul':'Sapphire', 'chaos':'Topaz',
+                        'life':'Emerald', 'harmony':'Diamond'}.items():
+    with Image.open(fetch(f'reference/resource/Item/Itm_GenMat{material}.dds')) as im:
+        im.convert('RGBA').save(dest / f'jewel-{jewel}.webp', lossless=True)

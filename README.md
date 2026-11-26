@@ -63,7 +63,17 @@ La Web y la PWA comprueban actualizaciones de la ubicación instalada al recuper
 
 <!-- coderabbit-ai-generated-section:v1:8bb92cff5402417bba038be5132ace540885350a2b9236e5b124af65f15d3513 -->
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:43495f7f9916aa1d04a15a5b0d9548197ac5708a21e14d83139b56342f5e2c89 -->
+
 GitHub Pages publica la web, el APK y `server-connection.json`. Ambos clientes leen ese archivo para encontrar el mismo servidor de cuentas y ADMIN. El APK también guarda la URL de la compilación como respaldo si la consulta no responde.
+
+Sin servidor de cuentas, Actions también genera el APK y la web. El ID, los personajes y sus objetos quedan en el dispositivo o navegador donde juegas. Allí puedes recuperar el acceso con las dos respuestas locales. Para cambiar de dispositivo sin servidor, exporta el respaldo en **Web / APKweb** e impórtalo en el otro antes de iniciar sesión. Una instalación nueva no puede recuperar por ID una partida que nunca se respaldó.
+
+En Android, el juego comprueba las actualizaciones al abrirlo. Desde la versión 2.13.2 también solicita a Android una comprobación periódica con red sin medición y espacio disponible. El cliente web verificado se activa al abrir el juego o tras guardar el progreso; los cambios en el código nativo requieren actualizar el APK.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 <!-- coderabbit-ai-generated:v1 -->
 

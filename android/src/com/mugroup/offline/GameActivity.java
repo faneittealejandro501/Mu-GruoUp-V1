@@ -57,6 +57,7 @@ public final class GameActivity extends Activity {
             View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
             View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
         updates = new ClientUpdates(this);
+        UpdateJob.schedule(this);
         web = new WebView(this);
         web.setBackgroundColor(Color.rgb(12, 16, 24));
         setContentView(web);

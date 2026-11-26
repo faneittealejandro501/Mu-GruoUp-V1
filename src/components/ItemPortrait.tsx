@@ -32,7 +32,9 @@ export function ItemPortrait({item,sex,large=false}: {item:{name:string;slot:Ite
   const color=finish ? hex(finish.color) : slot==='pendant' ? '#ff9766' : '#8bdfff';
   const Icon=slot==='weapon'?Sword:slot==='shield'?Shield:slot==='helm'?HardHat:
     slot==='armor'||slot==='pants'?Shirt:slot==='gloves'?Hand:slot==='boots'?Footprints:Gem;
-  return <span role="img" aria-label={item.name} style={{'--shine':tier?.color,'--finish':color} as CSSProperties}
+  return <span role="img" aria-label={item.name} style={{'--shine':tier?.color,'--finish':color,
+      '--sparkle':`url("./mugroup/${level>=9?config['item-options'].itemParticleTexture:config['item-options'].itemSparkleTexture}")`,
+      '--sparkle-period':`${Math.max(1,4-(tier?.sparkleRate ?? 0)/10)}s`} as CSSProperties}
     className={size+' item-portrait '+(level>=6?'item-upgraded':'')}>
     {src && missing!==src ? <><img loading="lazy" alt="" onError={()=>setMissing(src)} src={src}/>
       {armor && finish && <i className="absolute inset-0" style={{backgroundColor:color, mixBlendMode:'multiply', opacity:.65,

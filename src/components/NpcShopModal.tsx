@@ -196,7 +196,7 @@ export const NpcShopModal: React.FC<NpcShopModalProps> = ({
                   className="p-3 rounded-lg bg-[#141a28] border border-slate-800 flex items-center justify-between gap-3"
                 >
                   <div>
-                    <div className={`flex items-center gap-2 text-xs font-bold ${j.color}`}><Gem aria-hidden="true" fill="currentColor" className="size-6" />{j.name}</div>
+                    <div className={`flex items-center gap-2 text-xs font-bold ${j.color}`}><img alt="" width={32} height={32} src={`./mugroup/ui/items/jewel-${j.key}.webp`} />{j.name}</div>
                     <div className="text-[11px] text-slate-400">{j.desc}</div>
                   </div>
                   <button
