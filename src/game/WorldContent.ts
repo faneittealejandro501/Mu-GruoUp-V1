@@ -440,20 +440,20 @@ export class FlyffWorldStreamer {
   public getGroundHeight(x: number, z: number): number {
     if (!this.manifest || !this.heightmap) return 0;
     const res = this.manifest.heightResolution;
-    const spacing = this.manifest.heightSpacing;
-    const fx = Math.max(0, Math.min(res - 1.001, x / spacing));
-    const fz = Math.max(0, Math.min(res - 1.001, z / spacing));
-    const ix = Math.floor(fx);
-    const iz = Math.floor(fz);
-    const tx = fx - ix;
-    const tz = fz - iz;
-    const h00 = this.heightmap[iz * res + ix] ?? 0;
-    const h10 = this.heightmap[iz * res + ix + 1] ?? h00;
-    const h01 = this.heightmap[(iz + 1) * res + ix] ?? h00;
-    const h11 = this.heightmap[(iz + 1) * res + ix + 1] ?? h00;
-    const h0 = h00 + (h10 - h00) * tx;
-    const h1 = h01 + (h11 - h01) * tx;
-    return h0 + (h1 - h0) * tz;
+    // Terrain GLBs use every second height sample and split each quad across
+    // the (1,0)-(0,1) diagonal. Sample the visible triangles, including shores.
+    const step = 2;
+    const spacing = this.manifest.heightSpacing * step;
+    const last = (res - 1) / step;
+    const fx = Math.max(0, Math.min(last, x / spacing));
+    const fz = Math.max(0, Math.min(last, z / spacing));
+    const ix = Math.min(last - 1, Math.floor(fx)), iz = Math.min(last - 1, Math.floor(fz));
+    const tx = fx - ix, tz = fz - iz;
+    const i = step * (iz * res + ix);
+    const h = this.heightmap, row = res * step;
+    return tx + tz <= 1
+      ? h[i] * (1-tx-tz) + h[i+step] * tx + h[i+row] * tz
+      : h[i+row+step] * (tx+tz-1) + h[i+step] * (1-tz) + h[i+row] * (1-tx);
   }
 
   public shorelineLevel(x: number, y: number, z: number): number {

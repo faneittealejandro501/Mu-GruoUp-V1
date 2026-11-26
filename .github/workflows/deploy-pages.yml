@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main, master]
   workflow_dispatch:
+    inputs:
+      account_origin:
+        description: Origen HTTPS público del servidor de cuentas (opcional si ya está configurado)
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -42,11 +47,13 @@ jobs:
       - name: Build
         env:
           REQUIRE_ACCOUNT_SERVICE: ${{ github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch }}
-          VITE_WORLD_SERVER_URL: ${{ vars.VITE_WORLD_SERVER_URL }}
-          VITE_BACKUP_URL: ${{ vars.VITE_BACKUP_URL }}
+          VITE_WORLD_SERVER_URL: ${{ vars.VITE_WORLD_SERVER_URL || secrets.VITE_WORLD_SERVER_URL }}
+          VITE_BACKUP_URL: ${{ inputs.account_origin || vars.VITE_BACKUP_URL || secrets.VITE_BACKUP_URL }}
         run: |
+          node scripts/write-server-connection.mjs "$RUNNER_TEMP/server-connection.json"
+          export VITE_BACKUP_URL="$(node -p 'require(process.argv[1]).origin' "$RUNNER_TEMP/server-connection.json")"
           bun run build
-          node scripts/write-server-connection.mjs
+          cp "$RUNNER_TEMP/server-connection.json" dist/server-connection.json
 
       - name: Run release tests
         run: bun run test:release

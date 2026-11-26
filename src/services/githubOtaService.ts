@@ -52,10 +52,11 @@ export function setLinkedGithubRepoSlug(raw: string): string {
 export function getConfiguredCloudApiUrl(): string {
   try {
     const shared = sharedServerOrigin();
+    if (shared && isPublishedClient(location.hostname)) return shared;
     const override = parseServerOrigin(localStorage.getItem(LS_CLOUD_URL_KEY));
     return isPublishedClient(location.hostname) ? shared || override : override || shared;
   } catch {
-    return '';
+    return sharedServerOrigin();
   }
 }
 

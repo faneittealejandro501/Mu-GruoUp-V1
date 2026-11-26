@@ -180,12 +180,12 @@ export function applyEnhanceGlow(mesh: AbstractMesh, enhanceLevel: number, color
       : Color3.FromHexString('#' + color.toString(16).padStart(6, '0'));
     if (color !== undefined) {
       const tint = Color3.FromHexString('#' + color.toString(16).padStart(6, '0'));
-      if (cloned instanceof PBRMaterial) cloned.albedoColor = Color3.Lerp(Color3.White(), tint, 0.65);
-      if (cloned instanceof StandardMaterial) cloned.diffuseColor = Color3.Lerp(Color3.White(), tint, 0.65);
+      if (cloned instanceof PBRMaterial) cloned.albedoColor = cloned.albedoColor.multiply(Color3.Lerp(Color3.White(), tint, 0.65));
+      if (cloned instanceof StandardMaterial) cloned.diffuseColor = cloned.diffuseColor.multiply(Color3.Lerp(Color3.White(), tint, 0.65));
     }
     mesh.onDisposeObservable.addOnce(() => cloned.dispose(false, false));
     if ('emissiveColor' in cloned) {
-      (cloned as StandardMaterial).emissiveColor = Color3.Lerp(highlight, spec.color, 0.15).scale(spec.emissive * 0.24);
+      (cloned as StandardMaterial).emissiveColor = (cloned as StandardMaterial).emissiveColor.add(Color3.Lerp(highlight, spec.color, 0.15).scale(spec.emissive * 0.24));
     }
     if ('specularColor' in cloned) {
       (cloned as StandardMaterial).specularColor = highlight.scale(spec.specular * 0.6);
