@@ -29,5 +29,5 @@ for line in (root/'World/WdMadrigal/WdMadrigal.rgn').read_text('utf16').splitlin
         continue
     x, z = round(float(row[3])-ox, 3), round(float(row[5])-oz, 3)
     if 0 < x < size and 0 < z < size:
-        anchors.append(dict(x=x, z=z, **species[int(row[2])]))
+        anchors.append(dict(x=x, z=z, bounds=[int(row[9])-ox,int(row[10])-oz,int(row[11])-ox,int(row[12])-oz], **species[int(row[2])]))
 Path('src/data/madrigalSpawns.json').write_text('[\n' + ',\n'.join('  '+json.dumps(a, ensure_ascii=False) for a in anchors) + '\n]\n')

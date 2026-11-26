@@ -495,11 +495,11 @@ export class MuWorldEngine {
     if (version !== this.mapVersion || this.disposed) return;
     this.comboUntil = 0;
     const map = getMapById(mapId);
-    if (savedPose && Number.isFinite(savedPose.x) && Number.isFinite(savedPose.z)) {
+    if (savedPose && savedPose.x >= 20 && savedPose.x <= map.worldSize-20 && savedPose.z >= 20 && savedPose.z <= map.worldSize-20) {
       this.heroX = savedPose.x;
       this.heroZ = savedPose.z;
       this.heroRotY = savedPose.rotY ?? Math.PI;
-    } else if (resetPose) {
+    } else if (resetPose || savedPose) {
       this.heroX = map.spawn.x;
       this.heroZ = map.spawn.z;
       this.heroRotY = Math.PI;

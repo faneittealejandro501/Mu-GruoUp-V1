@@ -103,6 +103,18 @@ for (const family of Object.values(equipment.sets)) {
   }
 }
 
+const {wingCatalog} = JSON.parse(await readFile(new URL('../ADMIN/items.json',import.meta.url),'utf8'));
+assert.equal(new Set(wingCatalog.map(w=>w.glb)).size,wingCatalog.length);
+for (const w of wingCatalog) {
+  const doc=await glb(w.glb);
+  assert(doc.images.length && doc.skins.length && ['stand','walk'].every(clip=>doc.animations.some(a=>a.name===clip)),w.id);
+  await asset(w.auraTexture);
+  await asset('ui/items/'+w.glb.split('/').pop().replace('.glb','.webp'));
+}
+const pet=await glb('equipo/pet_angel_white.glb');
+assert(pet.images.length && pet.animations.some(a=>a.name==='stand'));
+for (const id of ['pet_angel_white','ring1','ring2','pendant']) await asset('ui/items/'+id+'.webp');
+
 const media = await readJSON('efectos-audio.json');
 for (const path of Object.values(media.sounds)) await asset(path);
 
@@ -214,6 +226,8 @@ console.log(
       equipmentModels: new Set([
         ...Object.values(equipment.weapons),
         ...Object.values(equipment.wings),
+        ...wingCatalog.map(w=>w.glb),
+        'equipo/pet_angel_white.glb',
         ...Object.values(equipment.sets).flatMap(Object.values),
       ]).size,
       referencedFiles: required.size,

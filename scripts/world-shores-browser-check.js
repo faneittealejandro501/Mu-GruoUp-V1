@@ -12,7 +12,11 @@
   if (!exact.length || groups.length!==anchors.length*10) throw Error('Faltan campamentos de referencia o grupos incompletos.');
   if (monsters.some(m=>!engine.flyff.world.isHuntingLand(m.homeX,m.homeZ)) || engine.flyff.world.isHuntingLand(50,50))
     throw Error('Hay monstruos en el mar.');
-  for (const [i,a] of anchors.entries()) for (const b of anchors.slice(i+1))
-    if (Math.hypot(a.homeX-b.homeX,a.homeZ-b.homeZ)<124) throw Error('Campamentos demasiado próximos.');
+  for (const m of groups) {
+    if (!reference.some(s=>s.name===m.def.name && s.level===m.scaledLevel &&
+      m.glbFile.endsWith('/'+s.model+'.glb') && ((s.x===m.homeX && s.z===m.homeZ) ||
+      (m.homeX>=s.bounds[0] && m.homeX<=s.bounds[2] && m.homeZ>=s.bounds[1] && m.homeZ<=s.bounds[3]))))
+      throw Error('Monstruo fuera de su zona de referencia: '+m.def.name);
+  }
   return {monsters:monsters.length, camps:anchors.length, referenceCamps:exact.length};
 })()

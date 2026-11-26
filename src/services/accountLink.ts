@@ -1,3 +1,4 @@
+import { networkDeadline } from './networkDeadline.ts';
 // Wrap the random backup key so another device can find it with a login or a recovery answer.
 const utf8 = new TextEncoder();
 const hex = (bytes: ArrayBuffer) => Array.from(new Uint8Array(bytes), n => n.toString(16).padStart(2, '0')).join('');
@@ -25,7 +26,7 @@ function route(endpoint: URL, name: string, suffix = '') {
   if (endpoint.protocol !== 'https:' && !['localhost','127.0.0.1','[::1]'].includes(endpoint.hostname)) throw new Error('Se requiere HTTPS.');
   return new URL('./account-link/' + name + suffix, endpoint);
 }
-const options = (): RequestInit => ({cache:'no-store', redirect:'error', credentials:'omit', signal:AbortSignal.timeout(10000)});
+const options = (): RequestInit => ({cache:'no-store', redirect:'error', credentials:'omit', signal:networkDeadline(10000)});
 
 export async function publishAccountLink(endpoint: URL, username: string, verifier: string, code: string, version: number, recovery?: Recovery): Promise<boolean> {
   const name = await accountName(username);
@@ -60,6 +61,8 @@ export async function lookupRecoveryLink(endpoint: URL, username: string, slot: 
 }
 export async function lookupRecoveryQuestions(endpoint: URL, username: string): Promise<[string,string]> {
   const res = await fetch(route(endpoint,await accountName(username),'/recovery'), options());
+  if (res.status === 429) throw Error('Demasiados intentos. Vuelve a intentarlo más tarde.');
+  if (!res.ok && res.status !== 404) throw Error('El servidor de recuperación no está disponible. Vuelve a intentarlo.');
   if (!res.ok) throw Error('La cuenta aún no tiene recuperación en línea. Entra desde el dispositivo donde ya guardaste la cuenta para sincronizarla.');
   const questions = await res.json();
   if (!Array.isArray(questions) || questions.length !== 2 || questions.some(q=>typeof q !== 'string')) throw Error('Servidor de cuentas no disponible.');

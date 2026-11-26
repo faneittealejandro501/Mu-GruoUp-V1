@@ -18,7 +18,7 @@
       "defense": 16,
       "magicPower": 10,
       "zenCost": 8500,
-      "glb": "equipo/wing_mugroup_feather.glb",
+      "glb": "equipo/wing_mugroup_feather01.glb",
       "glowColor": "#e0f2fe",
       "auraTexture": "efectos/texturas/sfx_effchrwingangel01.png"
     },
@@ -32,7 +32,7 @@
       "defense": 26,
       "magicPower": 18,
       "zenCost": 18500,
-      "glb": "equipo/wing_mugroup_feather.glb",
+      "glb": "equipo/wing_mugroup_feather02.glb",
       "glowColor": "#fde047",
       "auraTexture": "efectos/texturas/sfx_effchrwingangel01.png"
     },
@@ -46,7 +46,7 @@
       "defense": 32,
       "magicPower": 24,
       "zenCost": 26000,
-      "glb": "equipo/wing_mugroup_angel.glb",
+      "glb": "equipo/wing_mugroup_angel01.glb",
       "glowColor": "#93c5fd",
       "auraTexture": "efectos/texturas/sfx_effchrwingangel01.png"
     },
@@ -60,9 +60,9 @@
       "defense": 48,
       "magicPower": 38,
       "zenCost": 52000,
-      "glb": "equipo/wing_mugroup_angel.glb",
+      "glb": "equipo/wing_mugroup_angel02.glb",
       "glowColor": "#38bdf8",
-      "auraTexture": "efectos/texturas/sfx_effchrwingangel02.png"
+      "auraTexture": "efectos/texturas/sfx_effchrwingangel02-1.png"
     },
     {
       "id": "wing-prophet-01",
@@ -74,9 +74,9 @@
       "defense": 54,
       "magicPower": 44,
       "zenCost": 68000,
-      "glb": "equipo/wing_mugroup_prophet.glb",
+      "glb": "equipo/wing_mugroup_prophet01.glb",
       "glowColor": "#fb7185",
-      "auraTexture": "efectos/texturas/sfx_effchrwingangel02.png"
+      "auraTexture": "efectos/texturas/sfx_effchrwingangel02-1.png"
     },
     {
       "id": "wing-prophet-02",
@@ -88,9 +88,9 @@
       "defense": 78,
       "magicPower": 65,
       "zenCost": 115000,
-      "glb": "equipo/wing_mugroup_prophet.glb",
+      "glb": "equipo/wing_mugroup_prophet02.glb",
       "glowColor": "#c084fc",
-      "auraTexture": "efectos/texturas/sfx_effchrwingangel02.png"
+      "auraTexture": "efectos/texturas/sfx_effchrwingangel02-1.png"
     }
   ]
 }

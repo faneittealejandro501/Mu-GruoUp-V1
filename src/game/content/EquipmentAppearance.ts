@@ -119,6 +119,8 @@ function resolveMugroupUrl(relPath: string): { rootUrl: string; fileName: string
 
 export function detectWingEvoTier(wingItem?: MuItem | null): 1 | 2 | 3 | 4 {
   if (!wingItem) return 1;
+  const tier = getAdminConfigSync().items.wingCatalog.find((w:{name:string})=>w.name===wingItem.name)?.evoTier;
+  if (tier===1 || tier===2 || tier===3 || tier===4) return tier;
   const name = `${wingItem.name || ''} ${wingItem.excellentOpt || ''}`.toLowerCase();
   if (/evo\s*4|eterna|emperor|maldita|curse|monarch|space time|storm|illusion|hurricane|\+13/.test(name)) {
     return 4;
@@ -174,10 +176,7 @@ export function applyEnhanceGlow(mesh: AbstractMesh, enhanceLevel: number, color
     const cloned = mat.clone(`${mat.name}_enh_${enhanceLevel}_${Math.random().toString(36).slice(2, 6)}`);
     if (!cloned) return mat;
     // Keep leather, steel and feathers distinct underneath the upgrade shimmer.
-    const signature = mesh.name + mat.name;
-    let hue = 0;
-    for (const ch of signature) hue = (hue * 31 + ch.charCodeAt(0)) % 360;
-    const highlight = color === undefined ? Color3.FromHSV(hue, 0.48, 0.95)
+    const highlight = color === undefined ? spec.color
       : Color3.FromHexString('#' + color.toString(16).padStart(6, '0'));
     if (color !== undefined) {
       const tint = Color3.FromHexString('#' + color.toString(16).padStart(6, '0'));
@@ -196,7 +195,7 @@ export function applyEnhanceGlow(mesh: AbstractMesh, enhanceLevel: number, color
   mesh.material = applyToMat(mesh.material);
 }
 
-function splitTorsoAndPantsMesh(
+export function splitTorsoAndPantsMesh(
   sourceMesh: Mesh,
   scene: Scene,
   waistY = 0.85,
@@ -360,10 +359,15 @@ export class EquipmentAppearance {
       if (container) setContainers.set(file, container);
     });
 
-    const [weaponContainer, offhandContainer, wingContainer] = await Promise.all([
+    const pet = equippedItems.find(i=>i.isEquipped && i.slot==='pet');
+    const jewels = equippedItems.filter(i=>i.isEquipped && ['pendant','ring1','ring2'].includes(i.slot));
+    const jewelryLoad = Promise.all(jewels.map(i=>loadContainer('equipo/jewelry_'+(i.slot==='pendant'?'pendant':'ring')+'.glb')));
+    const [weaponContainer, offhandContainer, wingContainer, petContainer, jewelry] = await Promise.all([
       weaponFile ? loadContainer(weaponFile) : Promise.resolve(null),
       offhandFile ? loadContainer(offhandFile) : Promise.resolve(null),
       wingFile ? loadContainer(wingFile) : Promise.resolve(null),
+      pet ? loadContainer('equipo/pet_angel_white.glb') : null,
+      jewelryLoad,
       ...setLoadTasks,
     ]);
 
@@ -372,6 +376,8 @@ export class EquipmentAppearance {
       weaponContainer?.dispose();
       offhandContainer?.dispose();
       wingContainer?.dispose();
+      petContainer?.dispose();
+      jewelry.forEach(c=>c?.dispose());
       return;
     }
 
@@ -714,6 +720,43 @@ export class EquipmentAppearance {
       wingContainer?.dispose();
     }
 
+    if (petContainer && pet) {
+      petContainer.addAllToScene();
+      const root = petContainer.meshes[0];
+      root.parent = actor.root;
+      root.position.set(.85,.65,-.55);
+      root.scaling.scaleInPlace(.55);
+      for (const mesh of petContainer.meshes) {
+        mesh.isPickable = false;
+        if (mesh.getTotalVertices()) applyEnhanceGlow(mesh,pet.enhanceLevel);
+      }
+      petContainer.animationGroups.find(a=>a.name==='stand')?.start(true);
+      Object.assign(actor.gear.pet,{equipped:true, meshes:petContainer.meshes, containers:[petContainer],itemName:pet.name});
+      if (pet.enhanceLevel>=6) this.attachItemSparkles(actor,root,pet.enhanceLevel);
+    }
+    jewelry.forEach((container, index)=>{
+      if (!container) return;
+      const item=jewels[index];
+      const anchor=item.slot==='pendant' ? upperSpine : item.slot==='ring1' ? rightSocket : leftSocket;
+      const root=container.meshes[0];
+      if (!(anchor instanceof TransformNode) || !root) {container.dispose();return;}
+      container.addAllToScene();
+      const {min,max}=root.getHierarchyBoundingVectors(true);
+      const span=Math.max(.001,max.x-min.x,max.y-min.y,max.z-min.z);
+      root.scaling.scaleInPlace((item.slot==='pendant'?.18:.045)/span);
+      root.parent=anchor;
+      if(item.slot==='pendant') root.position.z=.12;
+      for(const mesh of container.meshes) {
+        mesh.isPickable=false;
+        if(mesh.getTotalVertices()) applyEnhanceGlow(mesh,item.enhanceLevel,artisanArmor(item.setName)?.color);
+      }
+      Object.assign(actor.gear[item.slot],{equipped:true,containers:[container],meshes:container.meshes,itemName:item.name});
+    });
+    for (const [slot,node] of [['ring1',rightSocket],['ring2',leftSocket],['pendant',upperSpine],['shield',shieldSocket]] as const) {
+      const level=equippedItems.find(i=>i.isEquipped && i.slot===slot)?.enhanceLevel ?? 0;
+      if (level>=6 && node instanceof TransformNode) this.attachItemSparkles(actor,node,level);
+    }
+
     const armorTier = Math.max(...ARMOR_SLOTS.map(slot => (actor.config.costume || actor.gear[slot]?.equipped) ? slotItems.get(slot)?.enhanceLevel ?? 0 : 0));
     if (upperSpine instanceof TransformNode && armorTier >= 6) this.attachItemSparkles(actor, upperSpine, armorTier);
 
@@ -736,7 +779,8 @@ export class EquipmentAppearance {
       3: Color3.FromHexString('#fbbf24'),
       4: Color3.FromHexString('#c084fc'),
     };
-    const col = tierColors[evoTier];
+    const wing = getAdminConfigSync().items.wingCatalog.find((w:{name:string})=>w.name===actor.gear.wings.itemName);
+    const col = wing ? Color3.FromHexString(wing.glowColor) : tierColors[evoTier];
 
     if (adminOpts?.wingLightEnabled !== false) {
       try {
@@ -755,7 +799,7 @@ export class EquipmentAppearance {
     if (adminOpts?.wingAuraParticlesEnabled !== false) {
       try {
         const ps = new ParticleSystem(`wing_aura_${Date.now()}`, 28 + evoTier * 14, this.scene);
-        const tex = new Texture('./mugroup/efectos/texturas/sfx_genlight01-1.png', this.scene, false, true);
+        const tex = new Texture('./mugroup/'+(wing?.auraTexture ?? 'efectos/texturas/sfx_genlight01-1.png'), this.scene, false, true);
         tex.hasAlpha = true;
         ps.particleTexture = tex;
         ps.emitter = wingSocket as unknown as AbstractMesh;
@@ -784,7 +828,8 @@ export class EquipmentAppearance {
     if (spec.sparkleRate <= 0) return;
     try {
       const ps = new ParticleSystem(`item_shine_${Date.now()}`, 24, this.scene);
-      const tex = new Texture('./mugroup/efectos/texturas/sfx_genlight01-1.png', this.scene, false, true);
+      const opts = getAdminConfigSync()['item-options'];
+      const tex = new Texture('./mugroup/'+(enhanceLevel >= 9 ? opts.itemParticleTexture : opts.itemSparkleTexture), this.scene, false, true);
       tex.hasAlpha = true;
       ps.particleTexture = tex;
       ps.emitter = node as unknown as AbstractMesh;

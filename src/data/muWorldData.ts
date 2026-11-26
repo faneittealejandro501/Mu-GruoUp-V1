@@ -119,7 +119,7 @@ export const MU_MAPS: MapDef[] = [
     warpZen: 0,
     areaKm2: AREA_KM2,
     worldSize: WORLD_SIZE_M,
-    cityRadius: 500,
+    cityRadius: 90,
     spawn: { x: 1336, z: 1281 },
     skyColor: '#1e3554',
     groundTint: '#4d7c4a',

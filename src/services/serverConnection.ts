@@ -1,3 +1,4 @@
+import { networkDeadline } from './networkDeadline.ts';
 import manifest from '../../public/ota-manifest.json' with { type:'json' };
 
 const pages = new URL(manifest.pagesUrl);
@@ -32,9 +33,9 @@ export async function discoverSharedServer(): Promise<string> {
   pending = (async () => {
     try {
       const res = await fetch(new URL('server-connection.json',pages), {
-        cache:'no-store', credentials:'omit', redirect:'error', signal:AbortSignal.timeout(3000),
+        cache:'no-store', credentials:'omit', redirect:'error', signal:networkDeadline(3000),
       });
-      if (res.ok) discovered = parseServerOrigin((await res.json()).origin);
+      if (res.ok) discovered = parseServerOrigin((await res.json()).origin) || discovered;
     } catch { /* retain the last trusted configuration */ }
     return sharedServerOrigin();
   })().finally(() => { pending = undefined; });

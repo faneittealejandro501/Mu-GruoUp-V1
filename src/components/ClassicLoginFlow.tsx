@@ -161,6 +161,8 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
       } else {
         setPassword('');
       }
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'No se pudo completar la solicitud. Vuelve a intentarlo.');
     } finally {
       setBusy(false);
     }
@@ -182,6 +184,8 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
       if (!res.ok) {
         setAuthError(res.error || 'Error al registrar cuenta.');
       }
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'No se pudo completar la solicitud. Vuelve a intentarlo.');
     } finally {
       setBusy(false);
     }
@@ -203,6 +207,8 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
       } else {
         setRecQuestions({ q1: res.secretQ1, q2: res.secretQ2, source: res.source });
       }
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'No se pudo completar la solicitud. Vuelve a intentarlo.');
     } finally {
       setBusy(false);
     }
@@ -230,6 +236,8 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
         setRecNewPass('');
         setAuthTab('login');
       }
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'No se pudo completar la solicitud. Vuelve a intentarlo.');
     } finally {
       setBusy(false);
     }
@@ -671,7 +679,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
             </div>
 
             {syncStatus.error && currentAccount && <p role="status" className="text-xs text-amber-300">
-              Partida guardada aquí. {syncStatus.error}
+              No se ha confirmado la recuperación desde otro dispositivo. {syncStatus.error}
             </p>}
             {!creatingChar && <details className="text-xs text-amber-200"><summary>Copia y recuperación de cuenta</summary>
               <PrivateBackupPanel key={currentAccount?.id} onRestored={onRestore} />
@@ -796,7 +804,7 @@ export const ClassicLoginFlow: React.FC<ClassicLoginFlowProps> = ({
       )}
 
       <div className="text-[11px] text-slate-400 font-mono-tabular text-center pt-2 shrink-0">
-        Tu aventura se guarda en este dispositivo. <button type="button" className="underline text-amber-200" onClick={onOpenApkCenter}>Restaurar copia</button>
+        Tu aventura se guarda en este dispositivo. <button type="button" className="underline text-amber-200" onClick={onOpenApkCenter}>Servidor de cuentas y restauración</button>
       </div>
     </div>
   );

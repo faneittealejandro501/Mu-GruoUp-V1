@@ -3,7 +3,7 @@ const CELL = 64;
 const MARGIN = 40;
 const CAMP_RADIUS = 12;
 
-export interface SpawnSite { x: number; z: number; model: string; level: number; name: string }
+export interface SpawnSite { x: number; z: number; model: string; level: number; name: string; bounds?: number[] }
 
 export interface CampMember {
   site?: SpawnSite;
@@ -24,6 +24,22 @@ export function scatterCamps(seed: string, size: number, count: number, allowed:
   };
 
   const members: CampMember[] = [];
+  // Native respawn7 entries describe rectangles in the same coordinate space as the terrain.
+  if (sites.length) {
+    for (const site of sites) {
+      if (members.length >= count * CAMP_SIZE) break;
+      const [x0,z0,x1,z1] = site.bounds ?? [site.x-12,site.z-12,site.x+12,site.z+12];
+      const group: CampMember[] = [];
+      for (let attempt=0; attempt<100 && group.length<CAMP_SIZE; attempt++) {
+        const x = attempt ? x0 + random()*(x1-x0) : site.x;
+        const z = attempt ? z0 + random()*(z1-z0) : site.z;
+        if (x<0 || z<0 || x>=size || z>=size || !allowed(x,z)) continue;
+        group.push({camp:members.length/CAMP_SIZE,x,z,heading:random()*Math.PI*2,site});
+      }
+      if (group.length===CAMP_SIZE) members.push(...group);
+    }
+    return members;
+  }
   const pitch = 128; // 100 m clear between the outer members, including jitter.
   const columns = Math.floor((size - 2 * (MARGIN + CAMP_RADIUS)) / pitch);
   const strata = Array.from({ length: columns * columns }, (_, i) => i);
@@ -49,7 +65,6 @@ export function scatterCamps(seed: string, size: number, count: number, allowed:
     centers.add(x,z,{x,z});
     members.push(...group);
   };
-  for (const site of sites) place(site.x,site.z,site);
   for (const cell of strata) {
     if (members.length >= count * CAMP_SIZE) break;
     place(edge + ((cell % columns)+.5)*pitch + random()*4, edge + (Math.floor(cell/columns)+.5)*pitch + random()*4);

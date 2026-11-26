@@ -1,3 +1,4 @@
+import wingItems from '../../ADMIN/items.json' with {type:'json'};
 import families from './setFamilies.json' with {type:'json'};
 import armaments from './setArmaments.json' with {type:'json'};
 import type { HeroClass, ShopItemDef, ItemSlot, NpcDef } from '../types/game.ts';
@@ -82,6 +83,13 @@ for (const [c, classType] of classes.entries()) {
       });
     }
   }
+}
+
+for (const w of wingItems.wingCatalog) {
+  ARTISAN_CATALOG.push({id:w.id, name:w.name, setName:'Madrigal', slot:'wings', category:'wings', rarity:'excellent',
+    enhanceLevel:[0,5,7,10,14][w.evoTier], minDmg:w.minDmg, maxDmg:w.maxDmg, defense:w.defense,
+    magicPower:w.magicPower, zenCost:w.zenCost, luck:false, excellentOpt:'Alas de Madrigal',
+    vendorRoles:['magic','chaos_goblin']});
 }
 
 export const AURORA_WING_NAME = 'Alas de Aurora Boreal · Madrigal';

@@ -460,7 +460,7 @@ def build_monster_glb(mvr_name: str, out_path: pathlib.Path) -> bool:
 
     # Convert stand, walk, atk1, dmg1, die1 animations (with case-insensitive fallbacks for NPCs like Default / idle1 / Walk)
     anim_map = {
-        'stand': ['stand', 'idle', 'idle1', 'default'],
+        'stand': ['stand', 'stand01', 'idle', 'idle1', 'default'],
         'walk': ['walk', 'Walk'],
         'atk1': ['atk1', 'atk2'],
         'dmg1': ['dmg1', 'hit'],

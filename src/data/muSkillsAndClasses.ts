@@ -588,6 +588,8 @@ export const MU_SKILLS: Record<HeroClass, SkillDef[]> = Object.fromEntries(
 ) as Record<HeroClass, SkillDef[]>;
 
 export const DEFAULT_BUTTON_LAYOUTS: Record<HudButtonId, ButtonLayoutItem> = {
+  room: {id:'room',label:'Sala y jefe',xPct:50,yPct:4,scale:1},
+  banners: {id:'banners',label:'Avisos de combate',xPct:50,yPct:23,scale:1},
   status: { id:'status', label:'Estado del héroe', xPct:15, yPct:6, scale:1 },
   actions: { id:'actions', label:'Eventos y nube', xPct:13, yPct:16, scale:1 },
   vitals: { id:'vitals', label:'Vida y maná', xPct:50, yPct:93, scale:1 },

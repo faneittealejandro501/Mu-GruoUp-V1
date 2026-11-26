@@ -1,3 +1,4 @@
+import { networkDeadline } from './networkDeadline.ts';
 import type { MuAccount, MuCharacter } from '../types/game.ts';
 
 type Backup = { account: MuAccount; characters: MuCharacter[] };
@@ -41,7 +42,7 @@ export async function syncEncryptedBackup(
   }
   const { key, auth } = await credentials(code.trim().toLowerCase());
   const headers = { 'Authorization': auth, 'Content-Type': 'application/json' };
-  const options: RequestInit = { cache: 'no-store', credentials: 'omit', redirect:'error', headers, signal:AbortSignal.timeout(12000) };
+  const options: RequestInit = { cache: 'no-store', credentials: 'omit', redirect:'error', headers, signal:networkDeadline(12000) };
   const received = await request(endpoint,options);
   let remote: Backup | undefined, previousRevision: string | null = null;
   if (received.ok) {
