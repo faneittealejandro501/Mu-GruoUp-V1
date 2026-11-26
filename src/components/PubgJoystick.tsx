@@ -18,9 +18,10 @@ export const PubgJoystick: React.FC<PubgJoystickProps> = ({
   const pointerIdRef = useRef<number | null>(null);
   const centerRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
+  const renderedScale = useRef(1);
   const updateFromClient = (clientX: number, clientY: number) => {
-    const dx = clientX - centerRef.current.x;
-    const dy = clientY - centerRef.current.y;
+    const dx = (clientX - centerRef.current.x) / renderedScale.current;
+    const dy = (clientY - centerRef.current.y) / renderedScale.current;
     const dist = Math.hypot(dx, dy);
     const clamped = Math.min(knobMax, dist);
     const angle = Math.atan2(dy, dx);
@@ -44,6 +45,7 @@ export const PubgJoystick: React.FC<PubgJoystickProps> = ({
     if (disabled) return;
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
+    renderedScale.current = rect.width / (baseRadius * 2) || 1;
     centerRef.current = {
       x: rect.left + rect.width / 2,
       y: rect.top + rect.height / 2,

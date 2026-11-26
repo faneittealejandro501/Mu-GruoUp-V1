@@ -283,6 +283,8 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
         onPointerUp={endDragButton}
         onPointerCancel={endDragButton}
         style={{
+          width: id === 'editToolbar' ? 'min(96vw, 52rem)' : 'max-content',
+          maxWidth: '100vw',
           left: `${layout.xPct}%`,
           top: `${layout.yPct}%`,
           transform: `translate(-50%, -50%) scale(${layout.scale})`,
@@ -597,7 +599,7 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
           'editToolbar',
           <div
             data-testid="hud-edit-toolbar"
-            className="flex items-center gap-2 flex-wrap justify-center rounded-xl bg-[#0e1420] border-2 border-amber-500 px-3.5 py-2 shadow-2xl max-w-[92vw]"
+            className="flex items-center gap-1 flex-wrap justify-center rounded-xl bg-[#0e1420] border-2 border-amber-500 px-3.5 py-2 shadow-2xl max-h-[42dvh] overflow-y-auto"
           >
             <span className="text-xs font-bold text-amber-300 cursor-move" data-testid="hud-editor-drag">⠿ Mover</span>
             <select
@@ -615,6 +617,10 @@ export const MuHudOverlay: React.FC<MuHudOverlayProps> = ({
                 onChange={e=>onUpdateButtonLayouts({...buttonLayouts,[selectedEditId]:{
                   ...buttonLayouts[selectedEditId],[axis]:Number(e.currentTarget.value)}})} />
             </label>)}
+            {selectedEditId && <input aria-label="Tamaño del elemento" type="range" min="0.35" max="2" step="0.05"
+              className="w-20" value={buttonLayouts[selectedEditId].scale}
+              onChange={e => onUpdateButtonLayouts({...buttonLayouts,[selectedEditId]:{
+                ...buttonLayouts[selectedEditId],scale:Number(e.currentTarget.value)}})} />}
             <span className="text-xs text-amber-300">{Math.round((buttonLayouts[selectedEditId || 'attack']?.scale ?? 1) * 100)}%</span>
             <button
               onClick={() => adjustSelectedScale(-0.1)}

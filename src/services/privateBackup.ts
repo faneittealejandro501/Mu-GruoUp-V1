@@ -42,8 +42,8 @@ export async function syncEncryptedBackup(
   }
   const { key, auth } = await credentials(code.trim().toLowerCase());
   const headers = { 'Authorization': auth, 'Content-Type': 'application/json' };
-  const options: RequestInit = { cache: 'no-store', credentials: 'omit', redirect:'error', headers, signal:networkDeadline(12000) };
-  const received = await request(endpoint,options);
+  const options: RequestInit = { cache: 'no-store', credentials: 'omit', redirect:'error', headers };
+  const received = await request(endpoint,{...options,signal:networkDeadline(12000)});
   let remote: Backup | undefined, previousRevision: string | null = null;
   if (received.ok) {
     const encrypted = await received.json() as Envelope;
@@ -66,7 +66,7 @@ export async function syncEncryptedBackup(
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const encoded = await crypto.subtle.encrypt({name:'AES-GCM',iv},key,text.encode(JSON.stringify(result)));
   const res = await request(endpoint,{
-    ...options, method:'PUT', body:JSON.stringify({revision:previousRevision,iv:base64(iv),data:base64(new Uint8Array(encoded))}),
+    ...options, signal:networkDeadline(12000), method:'PUT', body:JSON.stringify({revision:previousRevision,iv:base64(iv),data:base64(new Uint8Array(encoded))}),
   });
   if (!res.ok) throw new Error(res.status === 409 ? 'Otro dispositivo actualizó la copia. Se reintentará.' : 'No se pudo guardar la copia privada.');
   return result;

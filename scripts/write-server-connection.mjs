@@ -1,17 +1,29 @@
 import { readFileSync, writeFileSync } from 'node:fs';
-const configured = (process.env.VITE_BACKUP_URL || process.env.VITE_WORLD_SERVER_URL || '').trim();
+let configured = (process.env.VITE_BACKUP_URL || process.env.VITE_WORLD_SERVER_URL || '').trim();
+const required = process.env.REQUIRE_ACCOUNT_SERVICE === 'true';
+const pages = JSON.parse(readFileSync('public/ota-manifest.json','utf8')).pagesUrl;
+// Keep subsequent releases on the endpoint chosen by the previous official release.
+if (required && !configured) {
+  const response = await fetch(new URL('server-connection.json', pages), {
+    redirect:'error', signal:AbortSignal.timeout(10000),
+  }).catch(() => null);
+  if (response?.ok) {
+    const previous = await response.json().catch(() => null);
+    if (typeof previous?.origin === 'string') configured = previous.origin.trim();
+  }
+}
 const url = configured ? new URL(configured) : null;
 if (url && (url.protocol !== 'https:' || url.username || url.password || url.pathname !== '/' || url.search || url.hash)) {
   throw Error('VITE_BACKUP_URL debe ser el origen HTTPS del servidor, sin ruta ni credenciales.');
 }
-if (process.env.REQUIRE_ACCOUNT_SERVICE === 'true') {
-  if (!url) throw Error('Configura VITE_BACKUP_URL antes de publicar la web y el APK.');
-  const pages = JSON.parse(readFileSync('public/ota-manifest.json','utf8')).pagesUrl;
+if (required) {
+  if (!url) throw Error('Falta el servidor de cuentas. Configura VITE_BACKUP_URL en Actions o indica account_origin al ejecutar Deploy GitHub Pages.');
   for (const origin of [new URL(pages).origin,'https://apk.mugroup.invalid']) {
     const options = {headers:{Origin:origin}, redirect:'error', signal:AbortSignal.timeout(15000)};
     const status = await fetch(new URL('/api/account-service',url),options);
-    if (!status.ok || status.headers.get('access-control-allow-origin') !== origin ||
-        (await status.json()).service !== 'mugroup-accounts')
+    const info = status.ok ? await status.json() : null;
+    if (status.headers.get('access-control-allow-origin') !== origin ||
+        info?.service !== 'mugroup-accounts' || info.recovery !== true)
       throw Error('Servidor de cuentas o recuperación no disponible desde '+origin);
     for (const path of ['/api/private-backup','/api/account-link/'+'0'.repeat(64)]) {
       const preflight = await fetch(new URL(path,url),{...options,method:'OPTIONS',headers:{
@@ -25,4 +37,4 @@ if (process.env.REQUIRE_ACCOUNT_SERVICE === 'true') {
     }
   }
 }
-writeFileSync('dist/server-connection.json', JSON.stringify({ origin: url?.origin ?? '' }) + '\n');
+writeFileSync(process.argv[2] || 'dist/server-connection.json', JSON.stringify({ origin: url?.origin ?? '' }) + '\n');
